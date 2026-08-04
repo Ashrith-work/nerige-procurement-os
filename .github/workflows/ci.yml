@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # The gate the plan calls non-negotiable. Boots a real Postgres, applies
+      # every migration, and asserts that a vendor session can reach none of
+      # another vendor's rows — across every vendor-scoped table, discovered
+      # from the system catalog rather than a hand-maintained list.
+      #
+      # A leak here is a commercial incident, so this blocks the merge.
+      - name: Vendor isolation + schema tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
