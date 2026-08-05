@@ -35,6 +35,8 @@ export const en = {
     couldNotSendLink: 'Could not send the link. Please try again.',
     linkSent: 'If that address is registered, a sign-in link is on its way.',
     codeSent: 'If that number is registered, a 6-digit code has been sent.',
+    continueWithGoogle: 'Continue with Google',
+    or: 'or',
   },
 
   nav: {
@@ -126,6 +128,9 @@ export const en = {
     linkExpired: 'That sign-in link has expired or has already been used.',
     linkIncomplete: 'That link is incomplete. Please ask for a new one.',
     somethingWrong: 'Something went wrong. Please try signing in again.',
+    notProvisioned:
+      'That account is not set up for this portal. Access is by invitation — ask the Nerige team to add you.',
+    providerRefused: 'That sign-in was cancelled.',
     backToSignIn: 'Back to sign in',
     noAccess: 'You do not have access to that page',
     noAccessHelp: 'If you think this is wrong, ask the Nerige team to check your account.',

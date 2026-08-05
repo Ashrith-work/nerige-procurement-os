@@ -1,7 +1,9 @@
 'use server'
 
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { normalisePhone, formatPhone } from '@/lib/auth/phone'
+import { appUrl, safeNext } from '@/lib/auth/app-url'
 import { getDictionary } from '@/lib/i18n'
 import { headers } from 'next/headers'
 import { localeFromAcceptLanguage } from '@/lib/i18n'
@@ -51,7 +53,7 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
     email,
     options: {
       ...OTP_OPTIONS,
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(safeNext(next))}`,
     },
   })
 
@@ -63,6 +65,37 @@ export async function requestMagicLink(_prev: LoginState, formData: FormData): P
   }
 
   return { status: 'sent', message: t.linkSent }
+}
+
+/**
+ * Google, for the Nerige team.
+ *
+ * The one channel that cannot refuse to create an account: `signInWithOAuth`
+ * has no `shouldCreateUser` flag, so the first click by anyone with a Google
+ * account mints a Supabase auth user. That is handled where it lands — the
+ * callback throws the session away unless an active `app_users` row exists —
+ * rather than here, because this function has no way to know who is coming.
+ *
+ * Not offered on the vendor tab. A weaver signs in from a phone with a number
+ * we already hold; asking her for a Google account would be asking her to have
+ * one.
+ */
+export async function signInWithGoogle(formData: FormData): Promise<void> {
+  const next = safeNext(String(formData.get('next') ?? ''))
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  })
+
+  if (error || !data.url) {
+    redirect('/auth/error?reason=provider_refused')
+  }
+
+  redirect(data.url)
 }
 
 /** The weaver: phone OTP. */

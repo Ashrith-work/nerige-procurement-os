@@ -13,6 +13,7 @@
     "test:isolation": "vitest run tests/isolation.test.ts",
     "seed": "tsx scripts/load-seed.ts",
     "seed:verify": "tsx scripts/verify-seed.ts",
+    "setup": "tsx scripts/setup-supabase.ts",
     "seed:order": "tsx scripts/seed-demo-order.ts",
     "preview:order": "tsx scripts/preview-screen.tsx --screen order",
     "preview:catalogue": "tsx scripts/preview-screen.tsx --screen catalogue",

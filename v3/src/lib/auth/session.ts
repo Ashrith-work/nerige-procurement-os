@@ -103,11 +103,27 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   }
 })
 
-/** Requires any authenticated user. Redirects to sign-in otherwise. */
+/**
+ * Requires any authenticated user.
+ *
+ * The two "no session" cases are not the same and must not redirect to the same
+ * place. Nobody signed in — send them to sign in. Signed in with Supabase but
+ * with no active `app_users` row — do NOT, because the proxy sends anyone
+ * holding a token away from /login and back to /, and the two would bounce
+ * forever. That state is reachable by a user suspended mid-session, and would
+ * be reachable by any stranger with a Google account if the OAuth callback did
+ * not already refuse it.
+ */
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser()
-  if (!user) redirect('/login')
-  return user
+  if (user) return user
+
+  const supabase = await createClient()
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser()
+
+  redirect(authUser ? '/auth/error?reason=not_provisioned' : '/login')
 }
 
 /**
