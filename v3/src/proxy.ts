@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isSupabaseConfigured } from '@/lib/auth/app-url'
 
 /**
  * Next.js 16 renamed the `middleware` convention to `proxy`. The runtime is
@@ -25,6 +26,18 @@ function isPublic(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
+  const { pathname: path } = request.nextUrl
+
+  // No Supabase project behind this deployment. Every route that touches data
+  // would throw, so send them all to the sign-in screen, which says so.
+  if (!isSupabaseConfigured()) {
+    if (path === '/login') return NextResponse.next({ request })
+    const login = request.nextUrl.clone()
+    login.pathname = '/login'
+    login.search = ''
+    return NextResponse.redirect(login)
+  }
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(

@@ -1,6 +1,8 @@
 import { headers } from 'next/headers'
 import { LoginForm } from './login-form'
 import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
+import { isSupabaseConfigured } from '@/lib/auth/app-url'
+import { Alert } from '@/components/ui/primitives'
 
 export const metadata = { title: 'Sign in · Nerige' }
 
@@ -25,6 +27,13 @@ export default async function LoginPage({
         <header className="text-center">
           <h1 className="text-xl font-medium tracking-tight text-stone-900">{t.login.brand}</h1>
         </header>
+
+        {!isSupabaseConfigured() && (
+          <Alert tone="error">
+            This deployment has no Supabase project behind it yet, so nobody can sign in. Set
+            NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY and redeploy.
+          </Alert>
+        )}
 
         <div className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
           <LoginForm next={safeNext} t={t} />
