@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+defaults:
+  run:
+    # The application lives in v3/. v1 is kept for reference and is not built.
+    working-directory: v3
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -15,6 +20,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: v3/package-lock.json
 
       - run: npm ci
 
@@ -24,13 +30,28 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # The gate the plan calls non-negotiable. Boots a real Postgres, applies
-      # every migration, and asserts that a vendor session can reach none of
-      # another vendor's rows — across every vendor-scoped table, discovered
-      # from the system catalog rather than a hand-maintained list.
+      # Boots a real Postgres, applies every migration and loads both seed
+      # files. Catches a migration that no longer applies cleanly, and a loader
+      # that no longer reproduces the supplied reorder pool, before either
+      # reaches a screen.
       #
-      # A leak here is a commercial incident, so this blocks the merge.
-      - name: Vendor isolation + schema tests
+      # --allow-duplicate-skus is here ONLY because the current export repeats
+      # two SKUs (PGW-BRHM-SLK-BRN-15374, SMT-SHAAN-SBN-ORA-11044). Without it
+      # the loader refuses, which is the correct behaviour for a real load and
+      # would mean this step never exercises the write path. Delete the flag as
+      # soon as the Shopify export is fixed.
+      - name: Migrations + seed load
+        run: npm run seed:verify -- --allow-duplicate-skus
+
+      # The merge gate. Boots a real Postgres, applies every migration, and
+      # asserts that a vendor session can reach none of another vendor's rows —
+      # across every vendor-scoped relation, discovered from the system catalog
+      # rather than a hand-maintained list, including the two that carry no
+      # vendor_id of their own and the collection view.
+      #
+      # One weaver seeing another's designs or prices is a commercial incident,
+      # not a bug report. A failure here blocks the merge.
+      - name: Vendor isolation suite
         run: npm test
 
       - name: Build
