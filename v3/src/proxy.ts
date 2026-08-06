@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { isSupabaseConfigured } from '@/lib/auth/app-url'
+import { isSupabaseConfigured } from '@/lib/auth/guards'
 
 /**
  * Next.js 16 renamed the `middleware` convention to `proxy`. The runtime is
@@ -19,7 +19,10 @@ import { isSupabaseConfigured } from '@/lib/auth/app-url'
  * and forgetting a route is a matter of when, not if.
  */
 
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/error', '/not-authorised']
+// /auth/callback is gone along with OAuth and magic links. Sign-in now
+// completes inside the Server Action, so there is no URL a provider redirects
+// back to and nothing public to allow through.
+const PUBLIC_PATHS = ['/login', '/auth/error', '/not-authorised']
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))

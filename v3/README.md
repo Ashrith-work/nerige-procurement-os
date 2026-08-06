@@ -69,27 +69,57 @@ cp .env.example .env.local          # then fill in the Supabase values
 npm install
 ```
 
-Point it at a Supabase project:
+Point it at a Supabase project — `npm run setup` does all of it in one pass
+(migrations, catalogue, both logins, one demo order) and prints the two
+passwords it generated. Or, by hand:
 
 1. Apply `supabase/migrations/*.sql` in filename order (SQL editor, or
    `supabase db push` if you use the CLI).
 2. Load the catalogue: `npm run seed`, with `DATABASE_URL` set to the project's
    session-mode connection string.
-3. Turn on phone auth — Supabase → Authentication → Providers → Phone, with an
-   SMS provider configured. Without one, vendor sign-in silently does nothing.
-   Email magic links need no extra provider.
-4. Add `${NEXT_PUBLIC_APP_URL}/auth/callback` to the Auth redirect allow-list,
-   or Pooja's link lands on an error page.
-5. Create the two logins:
+3. Create the two logins:
 
 ```bash
-npm run provision -- --role procurement_head --name "Pooja" --email pooja@nerigestory.com
-npm run provision -- --role vendor --name "HDR owner" --phone 9876543210 --vendor-code HDR --locale kn
+npm run provision -- --role procurement_head --name "Pooja" \
+  --user-id pooja@nerigestory.com --password '<generated>'
+
+npm run provision -- --role vendor --name "HDR owner" \
+  --user-id hdr --password '<generated>' --vendor-code HDR --locale kn
 ```
 
-Nobody can sign themselves in. `signInWithOtp` runs with
-`shouldCreateUser: false`, so an unrecognised number gets the same reply as a
-recognised one and no account is created either way.
+There is no third step. Password sign-in needs no auth provider, no SMS
+gateway, no redirect allow-list and no OAuth client — which is most of why it
+is what this build uses.
+
+In Supabase, turn **off** *Authentication → Providers → Email → allow new users
+to sign up*. Nothing in this codebase calls `signUp`, but the anon key is public
+by definition, and leaving signup enabled means anyone holding it can POST to
+`/auth/v1/signup` directly. Such an account sees nothing — every policy resolves
+through `app_users` and it has no row there — but it should not exist at all.
+
+### Sign-in
+
+A **user ID** and a **password**, issued by the Nerige team. Nobody signs
+themselves up and nothing is emailed.
+
+The user ID is an email address for the Nerige team, and a short handle like
+`hdr` for a weaver — she has no work address, and requiring one would mean
+telling her to go and get an email account before she can read her order.
+Handles map to a derived address on a domain that cannot receive mail
+(`src/lib/auth/user-id.ts`), because nothing is ever sent to them.
+
+`signInWithPassword` cannot create an account. That is the reason it is the
+entire auth surface: `signInWithOtp` creates one by default, and
+`signInWithOAuth` has no way to be told not to. The only code path that mints a
+user now is `scripts/provision-user.ts`, which runs from a laptop with the
+service-role key. A wrong ID and a wrong password return the same message, so
+the form is not a directory of who works here.
+
+Changing a password:
+
+```bash
+npm run provision -- --user-id hdr --password '<new>' --reset-password
+```
 
 ## Data
 
@@ -157,11 +187,26 @@ sent — and nothing else. Empty groups render nothing at all, because a screen 
 empty headings reads as broken.
 
 `/portal/catalogue` is every design Nerige holds for her, in the same card.
-Collection is a choice rather than a default, for the same reason vendor is
-required on Pooja's grid: HDR alone has 2,365 designs across 19 collections and
-no phone renders that. With nothing chosen the screen shows the collections
-themselves — one tap, then the cards. Search cuts across all of them, because a
-weaver looking up one code does not know which collection it was filed under.
+
+It opens on all of them, newest first, and narrows by **collection, colour or
+fabric** — the three things the SKU actually encodes. HDR has 2,365 designs
+across 19 collections, 81 colours and 11 fabrics, and the filter options carry
+their counts (`GRN (465)`) so she knows a filter is worth applying before she
+applies it. Only values she actually has appear; a dropdown offering colours she
+has never woven is worse than no dropdown.
+
+This screen used to refuse to render anything until a collection was chosen, on
+the reasoning that 2,365 designs is not a grid anyone browses. That was the
+wrong trade. A weaver looking for a saree she half-remembers does not know which
+collection it was filed under, and being made to guess before seeing anything
+reads as an empty portal. Pagination handles the volume; the filters handle the
+finding.
+
+Every filter lands in the URL, so a result is a link she can send to someone.
+
+The options come from `vendor_facets`, one `security_invoker` view over
+`products`, because PostgREST cannot express GROUP BY over a table and three
+separate views would be three grants to keep in step.
 
 Print hides the navigation, the search box and the pagination, and no card
 splits across a sheet.
@@ -234,7 +279,17 @@ copies of the same order.
 ## Isolation
 
 RLS is enabled **and forced** on `products`, `orders`, `order_lines` and
-`order_line_refs`, so policies apply even to the table owner. Policies resolve
+`order_line_refs`, so policies apply even to the table owner.
+
+Every policy compares against a scalar sub-select — `vendor_id = (select
+app.current_vendor_id())` — rather than calling a helper that takes the row's
+own column. That is not style. A function taking `vendor_id` as an argument
+cannot be hoisted, so it runs once per row, and each run joins `vendor_users` to
+`app_users`. Measured on the real project as the HDR weaver, before the fix:
+`count(*)` on `products` took **7.0 s**, a page of the catalogue **6.0 s**, and
+`vendor_facets` **17.8 s** — past Supabase's 8-second statement timeout, so it
+did not merely crawl, it failed. As an InitPlan the same three take **3.6 ms**,
+**3.9 ms** and **10.2 ms**. Correct and unusable is still unusable. Policies resolve
 identity through `SECURITY DEFINER` helpers in a private `app` schema with
 `search_path` pinned; a missing `WHERE` clause in a page cannot leak data.
 
@@ -258,7 +313,7 @@ which relations are vendor-scoped and how ownership of one of their rows is
 decided:
 
 - relations carrying `vendor_id` directly — `products`, `orders`,
-  `vendor_users`, and the `vendor_collections` view
+  `vendor_users`, and the `vendor_collections` and `vendor_facets` views
 - relations carrying none, found by walking **NOT NULL** foreign keys out of an
   already-scoped relation, with the ownership predicate built by nesting the
   parent's. That is how `order_lines` and `order_line_refs` are covered, and it
@@ -288,10 +343,10 @@ The view is caught with no extra code, because discovery found it.
 ## Layout
 
 ```
-src/app/login/            Phone OTP for weavers, email magic link for Pooja
+src/app/login/            User ID and password, for everybody
 src/app/(app)/            Everything behind a session
 src/components/ui/        Primitives, phone-first, 44px touch targets
-src/lib/auth/             Session resolution, role guards, phone normalisation
+src/lib/auth/             Session resolution, role guards, user ID mapping
 src/lib/i18n/             Vendor-facing strings, keyed on app_users.locale
 src/lib/seed/             The loader — CSV today, EasyEcom later
 src/lib/supabase/         server (RLS-bound) · admin (service role, provisioning only)

@@ -31,3 +31,6 @@ next-env.d.ts
 # scripts/preview-screen.tsx output
 *-preview.html
 order-preview.html
+
+# scripts/provision-vendors.ts output — plaintext passwords, never committed
+*.local.csv

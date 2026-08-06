@@ -18,6 +18,7 @@
     "preview:order": "tsx scripts/preview-screen.tsx --screen order",
     "preview:catalogue": "tsx scripts/preview-screen.tsx --screen catalogue",
     "provision": "tsx scripts/provision-user.ts",
+    "provision:vendors": "tsx scripts/provision-vendors.ts",
     "verify": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {

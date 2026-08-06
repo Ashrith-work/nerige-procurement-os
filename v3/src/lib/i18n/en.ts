@@ -15,28 +15,15 @@ export const en = {
 
   login: {
     brand: 'Nerige',
-    tabVendor: 'Vendor',
-    tabTeam: 'Nerige team',
-    mobileNumber: 'Mobile number',
-    mobileHint: 'The number registered with Nerige.',
-    mobilePlaceholder: '98765 43210',
-    sendCode: 'Send code',
-    sending: 'Sending…',
-    enterCode: 'Enter the 6-digit code',
-    checking: 'Checking…',
-    workEmail: 'Work email',
-    emailMeALink: 'Email me a sign-in link',
+    userId: 'User ID',
+    userIdHint: 'The ID Nerige gave you.',
+    userIdPlaceholder: 'hdr',
+    password: 'Password',
+    signingIn: 'Signing in…',
+    // One message for both halves, on purpose: naming which one was wrong turns
+    // the form into a list of who has an account here.
+    wrongCredentials: 'That user ID or password is not right.',
     byInvitation: 'Access is by invitation. Ask the Nerige team if you cannot sign in.',
-    enterValidEmail: 'Enter a valid email address.',
-    enterMobile: 'Enter a 10-digit mobile number.',
-    enterSixDigits: 'Enter the 6-digit code from the SMS.',
-    codeWrong: 'That code is incorrect or has expired. Ask for a new one.',
-    couldNotSendCode: 'Could not send the code. Please try again.',
-    couldNotSendLink: 'Could not send the link. Please try again.',
-    linkSent: 'If that address is registered, a sign-in link is on its way.',
-    codeSent: 'If that number is registered, a 6-digit code has been sent.',
-    continueWithGoogle: 'Continue with Google',
-    or: 'or',
   },
 
   nav: {
@@ -108,6 +95,8 @@ export const en = {
     resultsFor: 'Results for',
     noResults: 'Nothing matches that. Try part of a code, like VINT or 15549.',
     allCollections: 'All collections',
+    allColours: 'All colours',
+    allFabrics: 'All fabrics',
     backToCollections: 'All collections',
     print: 'Print',
     page: 'Page {n} of {total}',
@@ -125,12 +114,9 @@ export const en = {
 
   auth: {
     cannotSignIn: 'Could not sign you in',
-    linkExpired: 'That sign-in link has expired or has already been used.',
-    linkIncomplete: 'That link is incomplete. Please ask for a new one.',
     somethingWrong: 'Something went wrong. Please try signing in again.',
     notProvisioned:
       'That account is not set up for this portal. Access is by invitation — ask the Nerige team to add you.',
-    providerRefused: 'That sign-in was cancelled.',
     backToSignIn: 'Back to sign in',
     noAccess: 'You do not have access to that page',
     noAccessHelp: 'If you think this is wrong, ask the Nerige team to check your account.',

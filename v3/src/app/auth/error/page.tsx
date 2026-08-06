@@ -14,11 +14,12 @@ export default async function AuthErrorPage({
   const { reason } = await searchParams
   const t = getDictionary(localeFromAcceptLanguage((await headers()).get('accept-language'))).auth
 
+  // One reason left. Magic links, phone OTP and OAuth are gone, and with them
+  // expired links, incomplete callbacks and cancelled consent screens — the
+  // only way to hold a token with no profile now is an account suspended or
+  // deleted mid-session.
   const reasons: Record<string, string> = {
-    invalid_link: t.linkExpired,
-    missing_code: t.linkIncomplete,
     not_provisioned: t.notProvisioned,
-    provider_refused: t.providerRefused,
   }
 
   return (

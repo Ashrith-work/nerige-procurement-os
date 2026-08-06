@@ -17,10 +17,24 @@ import { createClient } from '@supabase/supabase-js'
 import { readFile, readdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { loadSeed } from '../src/lib/seed/load'
 import { formatReport, isConsistent } from '../src/lib/seed/report'
 import { seedDemoOrder } from '../src/lib/seed/demo-order'
 import { normalisePhone } from '../src/lib/auth/phone'
+import { toAuthEmail, toDisplayUserId } from '../src/lib/auth/user-id'
+
+/**
+ * Generated, not chosen. These are handed to two people once and then live in a
+ * password manager; a memorable one would only be memorable because it was
+ * weak. Ambiguous glyphs are left out because these get read off a screen and
+ * typed on a phone — an O that turns out to be a zero is a support call.
+ */
+function generatePassword(): string {
+  const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = randomBytes(16)
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')
+}
 
 function loadEnv() {
   try {
@@ -57,18 +71,23 @@ async function main() {
   required('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 
   const vendorCode = (flag('vendor') ?? 'HDR').toUpperCase()
-  const poojaEmail = flag('email') ?? 'pooja@nerigestory.com'
+
   /**
-   * The weaver gets an email as well as a phone.
+   * Two user IDs, two passwords. Everybody signs in the same way — there is no
+   * signup form, no magic link and no third-party provider, so these are the
+   * only two credentials that exist when this script finishes.
    *
-   * Phone OTP is how she signs in for real, but that needs an SMS provider
-   * configured in Supabase, which is a paid account and a DLT registration in
-   * India. A vendor row may carry both identifiers — only the internal role is
-   * required to have an email — and the ROLE comes from app_users either way,
-   * so signing in by magic link lands on /portal exactly as the phone code
-   * would. It is the same session; only the proof of identity differs.
+   * The weaver's ID is a bare handle rather than an address: she has no work
+   * email, and asking her for one to sign into a portal she was given access to
+   * is asking her to go and get one first. See src/lib/auth/user-id.ts.
    */
-  const weaverEmail = flag('vendor-email') ?? 'weaver@nerigestory.com'
+  const poojaId = flag('user-id') ?? flag('email') ?? 'pooja@nerigestory.com'
+  const weaverId = flag('vendor-user-id') ?? vendorCode.toLowerCase()
+  const poojaPassword = flag('password') ?? generatePassword()
+  const weaverPassword = flag('vendor-password') ?? generatePassword()
+
+  // Contact detail only. Password sign-in replaced phone OTP, so this is how
+  // Nerige rings her, not how she proves who she is.
   const weaverPhone = flag('phone') ?? '9876543210'
   const locale = flag('locale') ?? 'en'
 
@@ -144,13 +163,15 @@ async function main() {
     await provision(admin, db, {
       role: 'procurement_head',
       name: 'Pooja',
-      email: poojaEmail,
+      userId: poojaId,
+      password: poojaPassword,
       locale: 'en',
     })
     await provision(admin, db, {
       role: 'vendor',
       name: `${vendor.rows[0].display_name} owner`,
-      email: weaverEmail,
+      userId: weaverId,
+      password: weaverPassword,
       phone,
       locale,
       vendorId: vendor.rows[0].id,
@@ -173,19 +194,22 @@ async function main() {
     }
 
     console.log(`
-Done. One thing left, in the Supabase dashboard:
+Done. Nothing left to configure — password sign-in needs no provider, no
+redirect allow-list and no SMS.
 
-  Authentication -> URL Configuration
-     add  ${process.env.NEXT_PUBLIC_APP_URL}/auth/callback  to the redirect allow list
+  npm run dev   then sign in at /login
 
-Then  npm run dev  and sign in on the "Nerige team" tab with either address.
-Both arrive by email link; neither needs an SMS provider.
+  User ID                        Password                           Lands on
+  ${toDisplayUserId(toAuthEmail(poojaId))?.padEnd(30)} ${poojaPassword.padEnd(34)} /reorder
+  ${toDisplayUserId(toAuthEmail(weaverId))?.padEnd(30)} ${weaverPassword.padEnd(34)} /portal
 
-  ${poojaEmail.padEnd(28)} Pooja      -> /reorder
-  ${weaverEmail.padEnd(28)} the weaver -> /portal
+WRITE THESE DOWN. They are not stored anywhere in readable form and are not
+printed again — Supabase keeps only a hash. To change one:
 
-The weaver also has ${phone} on her record, which is how she would really sign
-in once Authentication -> Providers -> Phone has an SMS provider behind it.
+  npm run provision -- --user-id <id> --password '<new>' --reset-password
+
+The weaver also has ${phone} on her record. That is a contact number, not a
+credential: nothing is sent to it and it cannot be used to sign in.
 `)
   } finally {
     await db.end()
@@ -198,6 +222,7 @@ type Admin = {
     admin: {
       createUser: (attrs: {
         email?: string
+        password?: string
         phone?: string
         email_confirm?: boolean
         phone_confirm?: boolean
@@ -213,32 +238,40 @@ async function provision(
   opts: {
     role: 'procurement_head' | 'vendor'
     name: string
-    email?: string
+    userId: string
+    password: string
     phone?: string
     locale: string
     vendorId?: string
   },
 ) {
-  const label = opts.email ?? opts.phone ?? opts.name
+  const email = toAuthEmail(opts.userId)
+  if (!email) throw new Error(`"${opts.userId}" is not a usable user ID`)
+
+  const label = toDisplayUserId(email) ?? opts.name
 
   const existing = await db.query<{ id: string }>(
     `select id from app_users
       where deleted_at is null
         and ((email is not null and email = $1) or (phone is not null and phone = $2))`,
-    [opts.email ?? null, opts.phone ?? null],
+    [email, opts.phone ?? null],
   )
   if (existing.rowCount && existing.rowCount > 0) {
-    console.log(`   ${label} already exists, leaving it alone`)
+    // Deliberately does NOT reset the password: re-running setup must never
+    // silently invalidate a credential someone is already using. Changing one
+    // is an explicit act — `npm run provision -- --reset-password`.
+    console.log(`   ${label} already exists, leaving it alone (password unchanged)`)
     return
   }
 
   const { data, error } = await admin.auth.admin.createUser({
-    email: opts.email,
+    email,
+    password: opts.password,
     phone: opts.phone,
-    // Provisioned by someone who has already verified the person. Without this
-    // the account cannot sign in until it confirms itself, which for phone OTP
-    // is a chicken-and-egg problem.
-    email_confirm: Boolean(opts.email),
+    // Provisioned by someone who has already verified the person, and a
+    // weaver's address is derived rather than real — nothing would ever arrive
+    // at it to confirm.
+    email_confirm: true,
     phone_confirm: Boolean(opts.phone),
   })
   if (error || !data.user) throw new Error(`Could not create ${label}: ${error?.message}`)
@@ -247,7 +280,7 @@ async function provision(
     await db.query(
       `insert into app_users (id, role, status, full_name, email, phone, locale)
        values ($1, $2::app_role, 'active', $3, $4, $5, $6)`,
-      [data.user.id, opts.role, opts.name, opts.email ?? null, opts.phone ?? null, opts.locale],
+      [data.user.id, opts.role, opts.name, email, opts.phone ?? null, opts.locale],
     )
     if (opts.vendorId) {
       await db.query(

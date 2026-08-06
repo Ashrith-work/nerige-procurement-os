@@ -5,7 +5,7 @@ import { getDictionary, type Dictionary } from '@/lib/i18n'
 import { DesignCard } from '@/components/design-card'
 import { StockLine } from '@/components/stock-line'
 import { PrintButton } from '@/components/print-button'
-import { Input, Button, PageHeader, EmptyState } from '@/components/ui/primitives'
+import { Input, Select, Button, PageHeader, EmptyState } from '@/components/ui/primitives'
 
 export const metadata = { title: 'My designs · Nerige' }
 
@@ -21,35 +21,58 @@ interface Design {
   stock_synced_at: string | null
 }
 
+interface Facet {
+  facet: string
+  value: string
+  design_count: number
+}
+
 /**
- * Every design the portal holds for this weaver. The same card as the order
- * screen, grouped by collection, searchable and printable.
+ * Every design the portal holds for this weaver.
  *
- * Collection is a choice rather than a default, for the same reason vendor is
- * required on Pooja's grid: HDR alone has over two thousand designs and no
- * phone renders that. With nothing chosen this shows the collections
- * themselves, which IS the grouping — one tap, then the cards.
+ * This screen used to open on a list of collections and refuse to render cards
+ * until one was chosen, on the reasoning that 2,365 designs is not a grid
+ * anyone browses. That was the wrong trade: a weaver looking for a saree she
+ * half-remembers does not know which collection it was filed under, and being
+ * made to guess before seeing anything reads as an empty portal.
  *
- * Search cuts across all of them, because a weaver looking up one code does not
- * know or care which collection it was filed under.
+ * So it opens on everything, newest first, and narrows by collection, colour or
+ * fabric — the three things actually encoded in the SKU. Pagination handles the
+ * volume; the filters handle the finding.
+ *
+ * What she can see is not decided here. `products` has RLS forced and
+ * `products_select_own` scopes every row to her own vendor_id, so this page
+ * cannot show another weaver's designs even if it forgot to filter. The queries
+ * below carry no vendor predicate at all, deliberately — the database is the
+ * boundary, not this file.
  */
 export default async function VendorCatalogue({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string; q?: string; page?: string }>
+  searchParams: Promise<{ c?: string; colour?: string; fabric?: string; q?: string; page?: string }>
 }) {
-  const { c, q, page } = await searchParams
+  const params = await searchParams
   const user = await requireVendor()
   const t = getDictionary(user.locale)
   const supabase = await createClient()
 
   // PostgREST filters are a grammar, and `,` `(` `)` `*` are operators in it.
   // Anything else would let a search box rewrite the query.
-  const search = (q ?? '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim()
-  const collection = (c ?? '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim()
-  const pageNumber = Math.max(1, Number(page) || 1)
+  const clean = (v: string | undefined) => (v ?? '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim()
 
-  const showingCards = Boolean(collection) || Boolean(search)
+  const collection = clean(params.c)
+  const colour = clean(params.colour)
+  const fabric = clean(params.fabric)
+  const search = clean(params.q)
+  const pageNumber = Math.max(1, Number(params.page) || 1)
+
+  const { data: facetRows } = await supabase
+    .from('vendor_facets')
+    .select('facet, value, design_count')
+    .order('design_count', { ascending: false })
+
+  const facets = (facetRows ?? []) as Facet[]
+  const of = (kind: string) => facets.filter((f) => f.facet === kind)
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -57,73 +80,96 @@ export default async function VendorCatalogue({
         <PageHeader
           title={t.catalogue.title}
           subtitle={t.catalogue.everyDesign}
-          action={showingCards ? <PrintButton label={t.catalogue.print} /> : undefined}
+          action={<PrintButton label={t.catalogue.print} />}
         />
       </div>
 
-      <form action="/portal/catalogue" className="no-print flex gap-2">
-        {collection && <input type="hidden" name="c" value={collection} />}
-        <Input
-          name="q"
-          type="search"
-          defaultValue={search}
-          placeholder={t.catalogue.search}
-          aria-label={t.catalogue.search}
-        />
-        <Button type="submit" variant="secondary">
-          {t.catalogue.searchAction}
-        </Button>
+      {/* A plain GET form. Every filter lands in the URL, so a weaver can
+          bookmark "my green Vintage sarees" and send the link to someone. */}
+      <form action="/portal/catalogue" className="no-print space-y-3">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <FacetSelect
+            name="c"
+            label={t.catalogue.allCollections}
+            value={collection}
+            options={of('collection')}
+          />
+          <FacetSelect
+            name="colour"
+            label={t.catalogue.allColours}
+            value={colour}
+            options={of('colour')}
+          />
+          <FacetSelect
+            name="fabric"
+            label={t.catalogue.allFabrics}
+            value={fabric}
+            options={of('fabric')}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            name="q"
+            type="search"
+            defaultValue={search}
+            placeholder={t.catalogue.search}
+            aria-label={t.catalogue.search}
+          />
+          <Button type="submit" variant="secondary">
+            {t.catalogue.searchAction}
+          </Button>
+          {(collection || colour || fabric || search) && (
+            <Link href="/portal/catalogue">
+              <Button type="button" variant="ghost">
+                {t.catalogue.clear}
+              </Button>
+            </Link>
+          )}
+        </div>
       </form>
 
-      {showingCards ? (
-        <Cards
-          supabase={supabase}
-          t={t}
-          collection={collection}
-          search={search}
-          pageNumber={pageNumber}
-        />
-      ) : (
-        <CollectionIndex supabase={supabase} t={t} />
-      )}
+      <Cards
+        supabase={supabase}
+        t={t}
+        collection={collection}
+        colour={colour}
+        fabric={fabric}
+        search={search}
+        pageNumber={pageNumber}
+      />
     </div>
   )
 }
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
-/** The grouping itself: her collections, with how much is in each. */
-async function CollectionIndex({ supabase, t }: { supabase: Supabase; t: Dictionary }) {
-  const { data } = await supabase
-    .from('vendor_collections')
-    .select('collection, design_count')
-    .order('design_count', { ascending: false })
-
-  const collections = data ?? []
-
-  if (collections.length === 0) {
-    return <EmptyState title={t.catalogue.collections} body={t.catalogue.noResults} />
-  }
+/**
+ * Counts sit in the option text on purpose. "GRN (465)" tells her the filter is
+ * worth applying before she applies it; a bare list of codes does not.
+ */
+function FacetSelect({
+  name,
+  label,
+  value,
+  options,
+}: {
+  name: string
+  label: string
+  value: string
+  options: Facet[]
+}) {
+  if (options.length === 0) return null
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-base font-medium text-stone-900">{t.catalogue.collections}</h2>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {collections.map((row) => (
-          <li key={row.collection}>
-            <Link
-              href={`/portal/catalogue?c=${encodeURIComponent(row.collection)}`}
-              className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-stone-200 px-4 py-3 hover:border-stone-300"
-            >
-              <span className="font-mono text-base text-stone-900">{row.collection}</span>
-              <span className="text-sm text-stone-500 tabular-nums">
-                {t.catalogue.designsCount.replace('{n}', String(row.design_count))}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Select name={name} defaultValue={value} aria-label={label}>
+      <option value="">{label}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.value} ({o.design_count})
+        </option>
+      ))}
+    </Select>
   )
 }
 
@@ -131,12 +177,16 @@ async function Cards({
   supabase,
   t,
   collection,
+  colour,
+  fabric,
   search,
   pageNumber,
 }: {
   supabase: Supabase
   t: Dictionary
   collection: string
+  colour: string
+  fabric: string
   search: string
   pageNumber: number
 }) {
@@ -147,6 +197,8 @@ async function Cards({
     })
 
   if (collection) query = query.eq('collection', collection)
+  if (colour) query = query.eq('colour_code', colour)
+  if (fabric) query = query.eq('fabric', fabric)
   if (search) query = query.or(`sku.ilike.%${search}%,title.ilike.%${search}%`)
 
   // seq descending is newest first — the same default sort as the reorder grid.
@@ -158,14 +210,17 @@ async function Cards({
   const total = count ?? 0
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  const applied = [collection, colour, fabric].filter(Boolean).join(' · ')
+  const heading = search ? `${t.catalogue.resultsFor} “${search}”` : applied || t.catalogue.title
+
   if (designs.length === 0) {
     return (
       <EmptyState
-        title={search ? `${t.catalogue.resultsFor} “${search}”` : collection}
+        title={heading}
         body={t.catalogue.noResults}
         action={
           <Link href="/portal/catalogue">
-            <Button variant="secondary">{t.catalogue.backToCollections}</Button>
+            <Button variant="secondary">{t.catalogue.clear}</Button>
           </Link>
         }
       />
@@ -175,25 +230,23 @@ async function Cards({
   const href = (n: number) => {
     const p = new URLSearchParams()
     if (collection) p.set('c', collection)
+    if (colour) p.set('colour', colour)
+    if (fabric) p.set('fabric', fabric)
     if (search) p.set('q', search)
     if (n > 1) p.set('page', String(n))
-    return `/portal/catalogue?${p.toString()}`
+    const qs = p.toString()
+    return qs ? `/portal/catalogue?${qs}` : '/portal/catalogue'
   }
 
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-medium text-stone-900">
-          {search ? `${t.catalogue.resultsFor} “${search}”` : collection}{' '}
+          {heading}{' '}
           <span className="font-normal text-stone-400 tabular-nums">
             {t.catalogue.designsCount.replace('{n}', String(total))}
           </span>
         </h2>
-        {collection && (
-          <Link href="/portal/catalogue" className="no-print text-sm text-stone-500 underline">
-            {t.catalogue.backToCollections}
-          </Link>
-        )}
       </div>
 
       {/* One column on a phone, more where there is room. Cards never split

@@ -63,6 +63,12 @@ async function boot(): Promise<TestDb> {
     password: 'postgres',
     port,
     persistent: false,
+    // initdb otherwise inherits the host locale, which on a Windows developer
+    // machine is WIN1252. The migrations are UTF-8 and contain characters that
+    // have no WIN1252 equivalent, so the suite failed to boot there while
+    // passing on Linux CI — the worst way for a merge gate to behave. Pinning
+    // the encoding makes the run identical everywhere.
+    initdbFlags: ['-E', 'UTF8', '--locale=C'],
   })
 
   await pg.initialise()

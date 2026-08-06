@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { LoginForm } from './login-form'
 import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
-import { isSupabaseConfigured } from '@/lib/auth/app-url'
+import { isSupabaseConfigured } from '@/lib/auth/guards'
 import { Alert } from '@/components/ui/primitives'
 
 export const metadata = { title: 'Sign in · Nerige' }

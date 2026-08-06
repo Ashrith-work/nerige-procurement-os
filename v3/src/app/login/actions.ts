@@ -1,140 +1,65 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { normalisePhone, formatPhone } from '@/lib/auth/phone'
-import { appUrl, safeNext } from '@/lib/auth/app-url'
-import { getDictionary } from '@/lib/i18n'
 import { headers } from 'next/headers'
-import { localeFromAcceptLanguage } from '@/lib/i18n'
+import { createClient } from '@/lib/supabase/server'
+import { safeNext } from '@/lib/auth/guards'
+import { toAuthEmail } from '@/lib/auth/user-id'
+import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
 
 export interface LoginState {
-  status: 'idle' | 'sent' | 'error'
+  status: 'idle' | 'error'
   message?: string
-  /** Echoed back so the code step knows which number to verify against. */
-  phone?: string
 }
-
-/**
- * THE most important flag in the auth layer: `shouldCreateUser: false`.
- *
- * Supabase's signInWithOtp CREATES AN ACCOUNT BY DEFAULT for any unrecognised
- * email or phone. Left at its default, anyone on the internet could type a
- * phone number and obtain an authenticated session. They would land with no
- * app_users row and therefore see nothing — RLS still holds — but they would
- * hold a valid token against our project, and every mistyped vendor number
- * would silently create an orphan auth user.
- *
- * Access to this portal is by invitation. Signing in proves control of an
- * already-registered number, nothing more.
- */
-const OTP_OPTIONS = { shouldCreateUser: false } as const
 
 async function strings() {
   const h = await headers()
   return getDictionary(localeFromAcceptLanguage(h.get('accept-language')))
 }
 
-/** Pooja: email magic link. */
-export async function requestMagicLink(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const t = (await strings()).login
-  const email = String(formData.get('email') ?? '')
-    .trim()
-    .toLowerCase()
-
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return { status: 'error', message: t.enterValidEmail }
-  }
-
-  const next = String(formData.get('next') ?? '') || '/'
-  const supabase = await createClient()
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      ...OTP_OPTIONS,
-      emailRedirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(safeNext(next))}`,
-    },
-  })
-
-  // Deliberately identical response whether or not the address is registered.
-  // Distinguishing them turns the sign-in form into a directory of who works
-  // here — an enumeration oracle worth avoiding for the cost of one branch.
-  if (error && !/user not found|signups not allowed/i.test(error.message)) {
-    return { status: 'error', message: t.couldNotSendLink }
-  }
-
-  return { status: 'sent', message: t.linkSent }
-}
-
 /**
- * Google, for the Nerige team.
+ * The only way into this portal.
  *
- * The one channel that cannot refuse to create an account: `signInWithOAuth`
- * has no `shouldCreateUser` flag, so the first click by anyone with a Google
- * account mints a Supabase auth user. That is handled where it lands — the
- * callback throws the session away unless an active `app_users` row exists —
- * rather than here, because this function has no way to know who is coming.
+ * Access is by invitation: every account is created by the Nerige team with
+ * `npm run provision`, which sets the password. There is deliberately no signup
+ * form, no password reset link and no third-party provider.
  *
- * Not offered on the vendor tab. A weaver signs in from a phone with a number
- * we already hold; asking her for a Google account would be asking her to have
- * one.
+ * `signInWithPassword` cannot create an account — unlike `signInWithOtp`, which
+ * creates one by default, and unlike `signInWithOAuth`, which has no way to be
+ * told not to. That property is why this is the whole auth surface: the only
+ * code path that mints a user now lives in a script that runs from a laptop
+ * with the service-role key, and there is no longer any route by which a
+ * stranger can obtain a session against this project.
+ *
+ * A wrong user ID and a wrong password return the SAME message. Distinguishing
+ * them turns the form into a directory of who works here, and the person who
+ * genuinely mistyped is no better served by knowing which half was wrong.
  */
-export async function signInWithGoogle(formData: FormData): Promise<void> {
+export async function signIn(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const t = (await strings()).login
+
+  const userId = String(formData.get('userId') ?? '')
+  const password = String(formData.get('password') ?? '')
   const next = safeNext(String(formData.get('next') ?? ''))
-  const supabase = await createClient()
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  })
-
-  if (error || !data.url) {
-    redirect('/auth/error?reason=provider_refused')
-  }
-
-  redirect(data.url)
-}
-
-/** The weaver: phone OTP. */
-export async function requestPhoneOtp(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const t = (await strings()).login
-  const phone = normalisePhone(String(formData.get('phone') ?? ''))
-
-  if (!phone) return { status: 'error', message: t.enterMobile }
-
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithOtp({ phone, options: OTP_OPTIONS })
-
-  if (error && !/user not found|signups not allowed/i.test(error.message)) {
-    return { status: 'error', message: t.couldNotSendCode }
-  }
-
-  return { status: 'sent', phone, message: `${t.codeSent} ${formatPhone(phone)}` }
-}
-
-/**
- * Verifies the SMS code and establishes the session.
- *
- * Unlike the request step, a wrong code IS reported plainly — the caller has
- * already proven possession of the number, so there is no enumeration risk, and
- * a vague error here would just make a weaver give up and reach for WhatsApp.
- */
-export async function verifyPhoneOtp(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const t = (await strings()).login
-  const phone = String(formData.get('phone') ?? '')
-  const token = String(formData.get('code') ?? '').trim()
-
-  if (!/^\d{6}$/.test(token)) {
-    return { status: 'error', phone, message: t.enterSixDigits }
+  // Resolved here rather than in the form so a handle and an email address take
+  // exactly the same path. See src/lib/auth/user-id.ts.
+  const email = toAuthEmail(userId)
+  if (!email || !password) {
+    return { status: 'error', message: t.wrongCredentials }
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' })
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) return { status: 'error', phone, message: t.codeWrong }
+  if (error) {
+    return { status: 'error', message: t.wrongCredentials }
+  }
 
-  return { status: 'idle' }
+  // Cookies were written by the client above — a Server Action can set them,
+  // which is why sign-in lives here rather than in a route handler.
+  //
+  // Outside the error branch on purpose: redirect() signals by throwing, and
+  // catching it would swallow the navigation.
+  redirect(next)
 }
