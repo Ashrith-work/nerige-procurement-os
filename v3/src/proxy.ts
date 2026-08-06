@@ -83,7 +83,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (user && pathname === '/login') {
+  // Someone already signed in has no use for the sign-in screen — send them to
+  // their own home instead.
+  //
+  // GET only, and that is load-bearing. The sign-in Server Action POSTs to this
+  // same path, and a Server Action expects a Server Action response: redirect
+  // it and the client throws "An unexpected response was received from the
+  // server" with no clue as to why. Worse, the action never runs, so signing in
+  // as somebody else while a session is already open fails — which is exactly
+  // what happens when the Nerige team open a weaver's login to check what she
+  // sees, and on any shared machine.
+  //
+  // Letting the POST through costs nothing: the action replaces the session and
+  // redirects properly on its own.
+  if (user && pathname === '/login' && request.method === 'GET') {
     const home = request.nextUrl.clone()
     home.pathname = '/'
     home.search = ''
