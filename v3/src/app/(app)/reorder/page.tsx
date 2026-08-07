@@ -128,7 +128,9 @@ async function Grid({
 }) {
   let query = supabase
     .from('products')
-    .select('sku, title, description, image_url, price, qty_available, stock_synced_at', {
+    // No description: nothing renders it any more, and on a 48-tile page the
+    // Shopify marketing copy is by far the largest thing on the wire.
+    .select('sku, title, image_url, price, qty_available, stock_synced_at', {
       count: 'exact',
     })
     .eq('vendor_id', vendorId)

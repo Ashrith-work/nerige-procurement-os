@@ -32,7 +32,6 @@ export function RestockCard({
     <DesignCard
       sku={line.sku}
       title={line.title}
-      description={line.description}
       imageUrl={line.imageUrl}
       Photo={Photo}
       footer={<Quantity n={line.quantity} t={t} />}

@@ -10,7 +10,6 @@ import { getDictionary } from '@/lib/i18n'
 export interface Design {
   sku: string
   title: string | null
-  description: string | null
   image_url: string | null
   price: string | number | null
   qty_available: number
@@ -22,10 +21,13 @@ const t = getDictionary('en')
 /**
  * One saree in the grid.
  *
- * The photograph, the code, a badge. No description — this screen should feel
- * like browsing the storefront, and a wall of body text is what turns a grid
- * back into a list. Title, description and price live behind the info button,
- * one tap away, for when she cannot tell two pinks apart.
+ * The photograph, the code, a badge. This screen should feel like browsing the
+ * storefront, and a wall of body text is what turns a grid back into a list.
+ * Title, price and stock live behind the info button, one tap away, for when
+ * she cannot tell two pinks apart.
+ *
+ * The top quarter of every frame is cropped away, matching the cards: the
+ * catalogue is shot on a model and the saree is in the lower three quarters.
  *
  * The whole tile is the target, not a checkbox in the corner: she is tapping
  * with a thumb, at speed, and "tap the picture" is the only interaction that
@@ -55,13 +57,21 @@ export function DesignTile({ design, vendorCode }: { design: Design; vendorCode:
       >
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-stone-100">
           {src ? (
-            <Image
-              src={src}
-              alt={design.title ?? design.sku}
-              fill
-              sizes="(max-width: 640px) 50vw, 20vw"
-              className="object-cover"
-            />
+            // Same crop as DesignCard: the inner box is 4/3 the height and
+            // pulled up by 1/3, so only the bottom three quarters is visible.
+            // unoptimized because shopifyImage() already asked Shopify's CDN
+            // for this exact width — Vercel's optimiser would be a second hop
+            // for a file that is already the right size.
+            <div className="absolute inset-x-0" style={{ top: '-33.3333%', height: '133.3333%' }}>
+              <Image
+                src={src}
+                alt={design.title ?? design.sku}
+                fill
+                sizes="(max-width: 640px) 50vw, 20vw"
+                className="object-cover"
+                unoptimized
+              />
+            </div>
           ) : (
             <span className="absolute inset-0 flex items-center justify-center text-xs text-stone-400">
               No photo
@@ -126,9 +136,6 @@ export function DesignTile({ design, vendorCode }: { design: Design; vendorCode:
             <div className="mt-2">
               <StockLine qty={design.qty_available} syncedAt={design.stock_synced_at} t={t} />
             </div>
-            {design.description && (
-              <p className="mt-3 text-sm leading-normal text-stone-600">{design.description}</p>
-            )}
             <button
               type="button"
               onClick={() => setInfo(false)}

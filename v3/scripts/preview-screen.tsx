@@ -109,7 +109,6 @@ async function renderCatalogue(
             <DesignCard
               sku={d.sku}
               title={d.title}
-              description={d.description}
               imageUrl={d.image_url}
               Photo={PlainPhoto}
               footer={<StockLine qty={d.qty_available} syncedAt={d.stock_synced_at} t={t} />}

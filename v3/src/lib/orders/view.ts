@@ -21,12 +21,18 @@ export interface ReferencePhoto {
   imageUrl: string | null
 }
 
-/** A saree she has made before. The code comes back on the piece. */
+/**
+ * A saree she has made before. The code comes back on the piece.
+ *
+ * No description. `snapshot_desc` is still written when an order is created —
+ * the record of what was ordered stays complete — but no screen renders it, so
+ * it is not fetched either. On a 12-line order that is a few kilobytes of
+ * marketing copy nobody reads, on a phone, over a mobile connection.
+ */
 export interface RestockLine {
   id: string
   sku: string
   title: string | null
-  description: string | null
   imageUrl: string | null
   quantity: number
   reorderReason: ReorderReason | null
@@ -62,7 +68,6 @@ export interface RawOrderLine {
   reorder_reason: string | null
   snapshot_title: string | null
   snapshot_image_url: string | null
-  snapshot_desc: string | null
   order_line_refs: { sku: string; snapshot_image_url: string | null }[] | null
 }
 
@@ -87,7 +92,7 @@ export const ORDER_SELECT = `
   id, order_number, status, issued_at, promised_date, dispatched_at, transport_docket,
   order_lines (
     id, line_type, sku, brief, quantity, reorder_reason,
-    snapshot_title, snapshot_image_url, snapshot_desc,
+    snapshot_title, snapshot_image_url,
     order_line_refs ( sku, snapshot_image_url )
   )
 `
@@ -110,7 +115,6 @@ export function toVendorOrder(row: RawOrder): VendorOrder {
         id: l.id,
         sku: l.sku,
         title: l.snapshot_title,
-        description: l.snapshot_desc,
         imageUrl: l.snapshot_image_url,
         quantity: l.quantity,
         reorderReason: (l.reorder_reason as ReorderReason | null) ?? null,

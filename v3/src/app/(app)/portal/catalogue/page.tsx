@@ -15,7 +15,6 @@ const PAGE_SIZE = 48
 interface Design {
   sku: string
   title: string | null
-  description: string | null
   image_url: string | null
   qty_available: number
   stock_synced_at: string | null
@@ -192,7 +191,7 @@ async function Cards({
 }) {
   let query = supabase
     .from('products')
-    .select('sku, title, description, image_url, qty_available, stock_synced_at', {
+    .select('sku, title, image_url, qty_available, stock_synced_at', {
       count: 'exact',
     })
 
@@ -257,7 +256,6 @@ async function Cards({
             <DesignCard
               sku={d.sku}
               title={d.title}
-              description={d.description}
               imageUrl={d.image_url}
               footer={<StockLine qty={d.qty_available} syncedAt={d.stock_synced_at} t={t} />}
             />
