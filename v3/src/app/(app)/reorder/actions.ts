@@ -3,10 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
+import { sendOnWhatsApp } from '@/app/(app)/orders/send-actions'
 
 export interface IssuePayload {
   restock: { sku: string; quantity: number }[]
   new_designs: { brief: string; quantity: number; refs: string[] }[]
+  /** Also push each order to the weaver's WhatsApp as it is created. */
+  alsoWhatsApp?: boolean
 }
 
 export interface IssuedOrder {
@@ -18,7 +21,7 @@ export interface IssuedOrder {
 }
 
 export type IssueResult =
-  | { status: 'ok'; batchId: string; orders: IssuedOrder[] }
+  | { status: 'ok'; batchId: string; orders: IssuedOrder[]; whatsapp?: string }
   | { status: 'error'; message: string }
 
 /**
@@ -55,8 +58,44 @@ export async function issueOrders(payload: IssuePayload): Promise<IssueResult> {
     return { status: 'error', message: error.message }
   }
 
+  const result = data as { batch_id: string; orders: IssuedOrder[] }
+  const orders = result.orders ?? []
+
+  // Putting an order in the portal IS delivering it there, so the timestamp is
+  // recorded at issue rather than waiting for someone to press a button that
+  // would not change anything. The button on the order screen exists for the
+  // case where this write failed, and is idempotent.
+  await supabase
+    .from('orders')
+    .update({ dashboard_sent_at: new Date().toISOString() })
+    .in(
+      'id',
+      orders.map((o) => o.order_id),
+    )
+
+  let whatsapp: string | undefined
+
+  if (payload.alsoWhatsApp) {
+    // Sequential, and failures are collected rather than thrown. One weaver's
+    // number being wrong must not lose the other two sends — and the orders
+    // themselves already exist, so there is nothing to roll back.
+    const failures: string[] = []
+    let sent = 0
+
+    for (const order of orders) {
+      const form = new FormData()
+      form.set('orderId', order.order_id)
+      const outcome = await sendOnWhatsApp({ status: 'idle' }, form)
+      if (outcome.status === 'sent') sent += 1
+      else failures.push(`${order.vendor_code}: ${outcome.message ?? 'failed'}`)
+    }
+
+    whatsapp = failures.length
+      ? `WhatsApp: ${sent} of ${orders.length} sent. ${failures.join(' · ')}`
+      : `WhatsApp: sent to ${sent} ${sent === 1 ? 'weaver' : 'weavers'}.`
+  }
+
   revalidatePath('/orders')
 
-  const result = data as { batch_id: string; orders: IssuedOrder[] }
-  return { status: 'ok', batchId: result.batch_id, orders: result.orders ?? [] }
+  return { status: 'ok', batchId: result.batch_id, orders, whatsapp }
 }

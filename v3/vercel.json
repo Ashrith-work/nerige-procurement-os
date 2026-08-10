@@ -1,4 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["bom1"]
+  "regions": ["bom1"],
+  "crons": [
+    {
+      "path": "/api/sync",
+      "comment": "Products then sales, every 30 minutes. Sales rows have a foreign key onto products, so a design added this morning has to exist before its orders can be counted — the route runs them in that order. NOTE: Vercel Hobby ignores sub-daily schedules and runs this once a day; the Sync now button in Settings is the mechanism either way, and every quantity on screen carries the age of the last SUCCESSFUL sync.",
+      "schedule": "0,30 * * * *"
+    }
+  ]
 }

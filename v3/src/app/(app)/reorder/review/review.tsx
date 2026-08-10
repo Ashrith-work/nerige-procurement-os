@@ -42,6 +42,17 @@ export function Review() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<IssuedOrder[] | null>(null)
+  const [whatsappNote, setWhatsappNote] = useState<string | null>(null)
+
+  /**
+   * Two channels, and the dashboard one is not a choice.
+   *
+   * Creating the order IS delivering it to her portal, so there is nothing to
+   * opt into — the checkbox would be permanently ticked and disabled. WhatsApp
+   * is the real decision, and it defaults on because a weaver who does not open
+   * the portal for three days is the reason it exists.
+   */
+  const [alsoWhatsApp, setAlsoWhatsApp] = useState(true)
 
   const bySku = useMemo(() => new Map(items.map((i) => [i.sku, i])), [items])
   const usedAsRef = useMemo(() => new Set(drafts.flatMap((d) => d.refs)), [drafts])
@@ -102,6 +113,7 @@ export function Review() {
         quantity: d.quantity,
         refs: d.refs,
       })),
+      alsoWhatsApp,
     })
 
     setPending(false)
@@ -112,6 +124,7 @@ export function Review() {
     }
 
     setIssued(result.orders)
+    setWhatsappNote(result.whatsapp ?? null)
     clear()
     router.refresh()
   }
@@ -122,8 +135,16 @@ export function Review() {
     return (
       <div className="mx-auto max-w-md space-y-4">
         <Alert tone="success">
-          {issued.length} {issued.length === 1 ? 'order' : 'orders'} issued.
+          {issued.length} {issued.length === 1 ? 'order' : 'orders'} issued, and in their portals.
         </Alert>
+
+        {/* Reported separately, and not as a failure of the send. The orders
+            exist and are in the portal regardless; WhatsApp is a second channel
+            that can fail on its own — a wrong number, an unapproved template —
+            without any of that being untrue. */}
+        {whatsappNote && (
+          <Alert tone={whatsappNote.includes(' of ') ? 'error' : 'success'}>{whatsappNote}</Alert>
+        )}
         <ul className="space-y-2">
           {issued.map((o) => (
             <li key={o.order_id} className="rounded-xl border border-stone-200 p-4">
@@ -319,6 +340,19 @@ export function Review() {
             Back
           </Link>
           <span className="flex-1" />
+
+          {/* The dashboard is not offered as a choice: creating the order is
+              what puts it in her portal. WhatsApp is the decision. */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-stone-600">
+            <input
+              type="checkbox"
+              checked={alsoWhatsApp}
+              onChange={(e) => setAlsoWhatsApp(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Also send on WhatsApp
+          </label>
+
           <Button onClick={submit} disabled={pending || incomplete}>
             {pending
               ? 'Sending…'

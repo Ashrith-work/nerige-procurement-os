@@ -8,6 +8,7 @@ import { toVendorOrder, ORDER_SELECT, type RawOrder } from '@/lib/orders/view'
 import { StatusBadge } from '@/components/ui/primitives'
 import { OrderSections } from '@/components/order-sections'
 import { CancelForm } from './cancel-form'
+import { DeliveryPanel, type Delivery } from './delivery-panel'
 
 export const metadata = { title: 'Order · Nerige' }
 
@@ -30,18 +31,44 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const { data } = await supabase
     .from('orders')
-    .select(`${ORDER_SELECT}, batch_id, vendors(code, display_name)`)
+    .select(
+      `${ORDER_SELECT}, batch_id,
+       dashboard_sent_at, whatsapp_sent_at, whatsapp_status, whatsapp_error,
+       po_number, po_drive_link, po_slack_ts,
+       vendors(code, display_name, whatsapp_number)`,
+    )
     .eq('id', id)
     .maybeSingle()
 
   if (!data) notFound()
 
   const order = toVendorOrder(data as unknown as RawOrder)
+
+  type EmbeddedVendor = { code: string; display_name: string; whatsapp_number: string | null }
   const raw = data as unknown as {
     batch_id: string
-    vendors: { code: string; display_name: string } | { code: string; display_name: string }[] | null
+    dashboard_sent_at: string | null
+    whatsapp_sent_at: string | null
+    whatsapp_status: string | null
+    whatsapp_error: string | null
+    po_number: string | null
+    po_drive_link: string | null
+    po_slack_ts: string | null
+    vendors: EmbeddedVendor | EmbeddedVendor[] | null
   }
   const vendor = Array.isArray(raw.vendors) ? raw.vendors[0] : raw.vendors
+
+  const delivery: Delivery = {
+    orderId: order.id,
+    dashboardSentAt: raw.dashboard_sent_at,
+    whatsappSentAt: raw.whatsapp_sent_at,
+    whatsappStatus: raw.whatsapp_status,
+    whatsappError: raw.whatsapp_error,
+    vendorHasWhatsapp: Boolean(vendor?.whatsapp_number),
+    poNumber: raw.po_number,
+    poDriveLink: raw.po_drive_link,
+    poSlackTs: raw.po_slack_ts,
+  }
 
   // The other orders from the same press of send.
   const { data: siblingRows } = await supabase
@@ -59,7 +86,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const cancellable = order.status === 'issued' || order.status === 'accepted'
 
   return (
-    <div className="mx-auto max-w-md space-y-8 pb-10">
+    // Wider than the weaver's screen. Hers is a phone; this one carries the
+    // sending panel alongside the same cards.
+    <div className="mx-auto max-w-2xl space-y-8 pb-10">
       <header className="space-y-2">
         <Link href="/orders" className="text-sm text-stone-500 underline underline-offset-2">
           All orders
@@ -109,6 +138,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           .
         </p>
       )}
+
+      <DeliveryPanel delivery={delivery} />
 
       {/* The weaver's own screen, unchanged. */}
       <OrderSections order={order} t={t} />

@@ -48,6 +48,20 @@ mapping table.
 | 6 | `/reorder` — the photo grid and the review step | Done |
 | 7 | `/orders` and `/orders/[id]` | Done |
 | 8 | The isolation suite | Done |
+| 9 | Five languages, per-vendor, and the tutorial film | Done |
+| 10 | Live Shopify sync, image selection, the image editor | Done |
+| 11 | The admin panel, vendor accounts, impersonation | Done |
+| 12 | Sales history, the tier ladder, card badges | Done |
+| 13 | The insights dashboard | Done |
+| 14 | Two send channels: dashboard and WhatsApp | Done |
+| 15 | Purchase orders, Google Drive, Slack | Done |
+
+**One thing is left, and it is not code.** Set `SHOPIFY_SHOP_DOMAIN` and
+`SHOPIFY_ADMIN_ACCESS_TOKEN` and press *Sync now* in Settings — the catalogue,
+the stock, the photographs, the sales history, the tier ladder, the badges and
+the whole insights dashboard fill in from that one step. Everything downstream
+of it is written and deployed and reads zeroes until it happens. See
+[docs/shopify-setup.md](./docs/shopify-setup.md).
 
 ## Commands
 
@@ -59,8 +73,12 @@ npm run seed:order    # create one order so the vendor screen has something to s
 npm run preview:order       # render the order screen to a static HTML file
 npm run preview:catalogue   # same, for the catalogue
 npm run provision     # create a login
-npm run verify        # typecheck + lint + tests
+npm run i18n:check    # every locale file carries every English key
+npm run verify        # i18n:check + typecheck + lint + tests
 ```
+
+`npm run i18n:check` also runs before `npm run build`, so a phase that adds a
+string to `en.json` and forgets the other four cannot deploy.
 
 ## Setup
 
@@ -127,16 +145,53 @@ Two sources, neither sufficient alone. The join key is the SKU string.
 
 | Field | Source |
 | --- | --- |
-| Quantity available | EasyEcom |
+| Quantity available | Shopify today, EasyEcom `Available` later |
 | Image, description, title, price | Shopify |
+| Units sold per day | Shopify orders |
 | Vendor identity | SKU prefix, derived |
 
-EasyEcom holds no images. Shopify holds no trustworthy warehouse stock. This
-portal is the only place the two meet, and that is its reason to exist.
+The CSV loader in `src/lib/seed/load.ts` is still here and still works, but it
+is no longer the source of truth. `products` is refreshed every thirty minutes
+from Shopify's Admin GraphQL API through `bulkOperationRunQuery` — 9,840
+products with a median of eleven images each is 99 paginated REST round trips
+that can rate-limit halfway through and leave the catalogue half-written. A bulk
+query is one request, one poll loop and one download, and it cannot half-finish.
 
-The build runs against the two seed CSVs in `v2/`, behind a loader
-(`src/lib/seed/load.ts`). That loader is the seam: wiring the EasyEcom inventory
-endpoint later changes it and nothing else. Every screen reads `products`.
+Three rules the sync keeps, each of which is a way it could quietly do damage:
+
+- **It never deletes.** A product Shopify stops returning is marked
+  `is_active = false`. A disappearance is far more often a filter change than a
+  saree that ceased to exist, and deleting would break every order line pointing
+  at it — including one a weaver is halfway through making.
+- **It never overwrites a manual image override.** `manual_image_url`,
+  `crop_json`, `display_image_position` and `crop_mode` are what a human chose
+  after looking at the photograph. A sync every half hour that undid them would
+  erase an afternoon's work invisibly.
+- **It never filters on `shopify_status`.** Unchanged, and still the single most
+  important rule in this codebase.
+
+`sync_runs` records every attempt, successful or not, and every screen showing a
+quantity shows the age of the last **successful** one. Those are the same number
+until the day they are not — and that day is exactly when a job failing every
+half hour would otherwise report a healthy sync over three-day-old stock.
+
+### Which photograph a weaver sees
+
+Shopify returns a median of eleven images per product. Image 1 is, on
+essentially every product in this catalogue, the full-length shot on a model —
+the saree occupies about a quarter of the frame and the rest is face, background
+and floor. Image 3 is the fabric.
+
+So the default is position 3, stored per product so it can be corrected, with a
+fallback to the **last** available image where a product has fewer than three
+(about 169 of them: their order runs context to detail, so the last is the
+closest thing to a fabric shot they have; the first would be the model again).
+
+The resolution order is written once in `resolveProductImage()`: a manual URL,
+then the image at the stored position, then the CSV-era column. The admin can
+override any of it from `/admin/products` — pick a different Shopify image, drag
+a crop rectangle, or paste a URL — and the crop is stored as fractions of the
+source so it survives the image being served at a different size.
 
 `stock_synced_at` is stored per SKU and every quantity shown on screen carries
 its sync age, because a stale number presented as live is worse than no number.
@@ -243,13 +298,41 @@ The review step is where a line stops being "make this again" and becomes "make
 me more in this direction" — a different line, a different card on the weaver's
 phone, and a saree that comes back with no code on it.
 
-### Sorting
+### Sorting, and the ladder
 
-`src/lib/reorder/sort.ts` is a registry of named strategies, and it is one file
-on purpose. `sales_rank` is nullable and empty until the EasyEcom SKU
-Performance export lands; `fastest_selling` is already written there with
-`enabled: false`. Turning it on is one boolean — no new component, no change to
-the page.
+The default is no longer a single column. It is four rungs, and within a rung,
+units sold in the chosen window descending:
+
+| Rung | Meaning | Badge |
+| --- | --- | --- |
+| 1 | Sold within the selected window | Selling |
+| 2 | Sold within 365 days, but not the window | Slowing |
+| 3 | Unsold in a year, but stock remains | In stock, not moving |
+| 4 | Unsold in a year, no stock | Dormant |
+
+A selector at the top chooses the window — 30, 60 or 90 days, defaulting to 90 —
+and changing it re-sorts the grid and changes the badge text.
+
+**This is what the whole sales pipeline is for.** Before it, a saree that sold
+out yesterday and one that had not moved since 2024 were indistinguishable on
+this screen: both read `qty_available: 0`, and both looked like proof of demand.
+Only one of them is. Anything unsold for a year now sits at the very bottom.
+
+PostgREST cannot put a CASE in an ORDER BY and a view could not take the window
+as a parameter, so the rung is computed during the sales rollup and stored as
+`tier_30`, `tier_60`, `tier_90`. The entire sort becomes
+`order by tier_90, units_90d desc`, which one partial index covers.
+
+`sku_sales_daily` holds units, distinct orders and revenue per design per day,
+backfilled 400 days from the Shopify orders API and then incremental. Daily
+grain rather than a running total because every window is a question somebody
+will ask later; a stored 90-day counter answers exactly one and has to be
+rebuilt from scratch the first time anyone wants a different number.
+
+400 rather than 365 because the windows are measured backwards from today — a
+straight year would leave the oldest end empty for the first five weeks after
+go-live, and "not sold in a year" would be wrong for exactly the designs it
+matters most about.
 
 ### The rule that matters
 
@@ -268,6 +351,110 @@ component, from the same `ORDER_SELECT`. If Pooja wants to know what the vendor
 is looking at, she should be looking at it, not at a table claiming to describe
 it. Above it sit the four facts she opens the screen for: when it went, the date
 the weaver promised, when it was dispatched, and the docket.
+
+### Sending, and what "sent" means
+
+An order can be delivered twice, so delivery is recorded per channel.
+`dashboard_sent_at` is set at issue, because putting an order in her portal *is*
+delivering it there. `whatsapp_sent_at` is only ever set by a successful send.
+
+That split exists because "sent" was one fact while the portal was the only way
+to reach her, and stopped being one the moment WhatsApp existed alongside it. A
+weaver who never opens the portal and reads everything on WhatsApp, and one
+whose WhatsApp is on a phone that is not hers, are different people with the
+same order.
+
+`whatsapp_status` then tracks what Meta reports through the webhook — sent,
+delivered, read, failed — and the screen shows those as different words on
+purpose. WhatsApp **accepting** a message means it left us; only `delivered`
+means it arrived. A wrong number accepts the send and fails quietly some minutes
+later, and collapsing the two is how somebody concludes a weaver has seen an
+order she never got.
+
+A WhatsApp send is two stages and cannot be otherwise: one Meta-approved
+template message, which is the only thing allowed to arrive unsolicited and
+which opens a 24-hour window, then the per-line photographs as free-form
+messages inside it. The template text to submit is in
+[docs/whatsapp-template.md](./docs/whatsapp-template.md); until it is approved,
+every send fails with error 132001 and the portal says exactly that.
+
+### Purchase orders
+
+`Generate PO` allocates a number from a sequence and stores it — regenerating
+produces the same number, because an identifier that changes when a document is
+reprinted is not an identifier. The PDF is built with `pdf-lib` rather than
+headless Chrome: a browser is a 50MB layer and a multi-second cold start for a
+one-page document.
+
+Then `Upload to Drive`, then `Send to Slack`. Three actions rather than one
+button because each fails for a different reason and the fix differs — a PDF
+that failed to build is a bug, a Drive upload that failed is nearly always the
+folder not being shared with the service account, and a Slack post that failed
+is nearly always the bot not being in the channel. One button reports all three
+as "could not send the PO".
+
+Setup for each: [Drive](./docs/google-drive-setup.md), [Slack](./docs/slack-setup.md).
+
+## The admin panel
+
+Fixed to the left, on every screen Pooja can reach rather than only inside a
+settings area — she moves between reordering, orders, vendors and insights in
+one sitting, and a hub she has to return to between each is a tap she pays every
+time. My profile, my vendors, insights, settings.
+
+**Creating a vendor** makes the vendor row, the auth user, the profile and the
+link, and shows the generated password once, with a copy button and a print
+button that prints the credential alone.
+
+**The password is never stored.** It is generated in memory, handed to Supabase
+Auth — which keeps only a bcrypt hash — rendered once into the response that
+created it, and then it is gone. Nothing writes it to a table, a log line or a
+cookie. What *is* stored is `credential_issued_at` and `credential_issued_by`,
+which answers every question an admin actually has about a credential except the
+one nobody at Nerige should be able to answer. Lost passwords are re-issued, one
+click, and that is itself recorded.
+
+Reversible encryption was the alternative and is worse than useless here: a key
+the application can decrypt with is a key an attacker who reaches the
+application can decrypt with, so it converts "passwords are safe" into
+"passwords are as safe as one environment variable" while looking prudent.
+
+The alphabet excludes `O`, `0`, `l`, `I`, `1`, `S` and `5`, and groups in fours
+— these get read aloud down a phone line, in a noisy room, by someone reading
+Latin script as a second script.
+
+**Impersonation** serves the real vendor routes with the vendor identity
+swapped, so it is her screen rather than a second rendering of the same data
+that can drift. Read-only, enforced in the action layer because the database
+genuinely permits those writes for an admin and cannot tell which hat she is
+wearing — and every session is logged with who, whom and when, which is the
+compensating control for a capability RLS cannot scope.
+
+## Insights
+
+Admin only, and never visible to a weaver — the route is behind
+`requireProcurement()` *and* every function it calls is `security invoker`, so a
+vendor login that somehow reached the RPCs directly would see her own rows and
+nobody else's.
+
+A date range with presets, then four stacked multi-select filters — vendor,
+collection, fabric, colour — each narrowing the next, and each drawn from the
+tokens already parsed onto `products`. The narrowing is real: choosing HDR means
+the collection list shows only collections HDR has. A dropdown offering a
+combination with nothing behind it produces an empty dashboard with no
+explanation for it.
+
+Then orders placed, units sold, distinct designs sold, sell-through and revenue;
+a table of the same figures one level down, where each row links to itself so
+reading and drilling in are the same gesture; a line chart; and a CSV export
+that re-runs the query rather than serialising the rows on screen — the day
+somebody paginates that table, a client-side export would quietly write one page
+and still be called "Export CSV".
+
+Sell-through is units sold ÷ (units sold + units still on hand). "Units
+available in period" has no single honest reading because stock moves during the
+window; this is what was actually shifted over everything that could have been,
+which is what a buyer means, and it cannot exceed 1.
 
 Read only apart from cancel, and that is a database rule rather than a hidden
 button. `app.orders_internal_write_guard()` refuses every status move except
@@ -343,28 +530,97 @@ The view is caught with no extra code, because discovery found it.
 ## Layout
 
 ```
+messages/                 One JSON file per language. en.json is the contract.
+docs/                     Connection guides: Shopify, WhatsApp, Drive, Slack
 src/app/login/            User ID and password, for everybody
 src/app/(app)/            Everything behind a session
+src/app/(app)/admin/      Pooja's panel: profile, vendors, products, insights, settings
+src/app/api/              Cron sync, WhatsApp webhook, PO download, CSV export
 src/components/ui/        Primitives, phone-first, 44px touch targets
-src/lib/auth/             Session resolution, role guards, user ID mapping
-src/lib/i18n/             Vendor-facing strings, keyed on app_users.locale
-src/lib/seed/             The loader — CSV today, EasyEcom later
-src/lib/supabase/         server (RLS-bound) · admin (service role, provisioning only)
+src/i18n/request.ts       next-intl, locale from the session and not the URL
+src/lib/auth/             Session resolution, role guards, impersonation, passwords
+src/lib/i18n/             Locale resolution, number formatting, the dictionaries
+src/lib/insights/         model.ts is shared with the client; query.ts is server-only
+src/lib/integrations/     WhatsApp, Google Drive, Slack
+src/lib/po/               The purchase order PDF
+src/lib/products/image.ts Which photograph, and how it is cropped. One file.
+src/lib/seed/             The CSV loader — a fallback path now, not the source
+src/lib/shopify/          Bulk operations, product sync, sales sync
+src/lib/supabase/         server (RLS-bound) · admin (service role, three uses)
 src/proxy.ts              Session refresh and the signed-out redirect
 supabase/migrations/      Schema and RLS
 supabase/tests/           Supabase shim, so the suite runs on vanilla Postgres
 tests/harness/            Real Postgres, real migrations, real role switching
 ```
 
+## The service-role key
+
+`.env.example` used to say this key was local-only and must never be set in a
+deployment. That has changed, and it is worth understanding rather than
+copying: the admin panel creates vendor logins, and creating an `auth.users` row
+is not expressible under RLS — no policy of ours reaches Supabase's own auth
+schema.
+
+Three code paths hold it and no others:
+
+- creating and re-issuing a vendor login, behind `requireProcurement()`
+- the scheduled sync route, which has no session to run as
+- the WhatsApp delivery webhook, which has no session either
+
+Everything else — every screen, every query, every other action — runs as the
+signed-in user under RLS. The sync itself goes through two `SECURITY DEFINER`
+RPCs that check `app.is_internal()` inside the function rather than relying on a
+grant, so the bypass is as narrow as it can be made.
+
 ## Language
 
-Every vendor-facing string goes through `src/lib/i18n`, keyed on
-`app_users.locale` — English, Kannada, Tamil, Telugu and Hindi. There is no
-locale in the URL and nothing for a weaver to pick: she signs in and the portal
-is in her language.
+Five, complete: English, Kannada, Telugu, Tamil and Hindi. One JSON file each in
+`messages/`, read through next-intl. There is no locale in the URL and nothing
+for a weaver to pick — she signs in and the portal is in her language.
 
-`en.ts` is complete and defines the type. The other four are empty and fall
-through to English key by key, so a partial translation is useful the day its
-first string lands. **They need a native speaker, not a machine** — a
-mistranslated instruction on the screen where someone copies a code onto fabric
-reads as authoritative and is not.
+**Language belongs to the weaver, not to a login.** `vendors.default_locale` is
+the fact: the Gadwal house is Telugu speaking, so PGW is set to `te` and her
+portal is Telugu from her first sign-in, before she has found a setting.
+`app_users.locale_override` is the exception, hers to change from a picker in
+her own header, and it applies to that login alone — so the owner's son who
+reads Kannada does not move the whole house. Resolution is override, then vendor
+default, then English, written down once in `resolveLocale()`.
+
+`npm run i18n:check` fails the build if any locale is missing a key English has,
+carries a key English does not, or drops a `{placeholder}` — that last one still
+renders, which is exactly why it needs checking. It runs before every build.
+
+**What is never translated**: SKU codes, saree names, vendor codes, collection
+tokens. Those are Latin-script identifiers matched against EasyEcom and copied
+onto a fabric label by hand; a transliterated code matches nothing.
+
+Digits stay Latin. `LOCALE_CONFIG` carries `useNativeNumerals`, false for all
+five, and every number on every screen renders through `formatCount()` — so
+reversing that judgement for one language is one boolean and no component
+changes. Kannada and Devanagari digit forms exist and are correct; they are
+simply not what a quantity read aloud to a transporter is for.
+
+**These translations still want a native speaker's eye.** They are complete and
+careful, not authoritative — and a mistranslated instruction on the screen where
+someone copies a code onto fabric reads as authoritative whether or not it is.
+
+## The tutorial film
+
+A card at the top of `/portal`, above her orders, on every visit and not
+dismissable. A weaver may have used this portal twice, three months apart, on a
+shared phone; a "don't show again" checkbox gets pressed once by someone who has
+understood nothing yet.
+
+`tutorial_videos` holds one active row per language, chosen by her resolved
+locale with English as the fallback, managed from Settings. The film plays
+inline — sending her to YouTube means sending her into an app that will
+recommend her something else and not bring her back — with a translated
+numbered list of the process underneath, for reading at the loom with the sound
+off.
+
+**Use an unlisted video, not a private one.** Unlisted plays for anyone with the
+link. Private plays only for YouTube accounts it has been shared with, and a
+weaver is not signed in to YouTube here — so a private video shows her "Video
+unavailable" while playing perfectly for the admin who uploaded it. That cannot
+be detected from a URL, so the Settings screen states it and previews the embed
+a weaver would actually get.
