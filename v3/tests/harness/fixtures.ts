@@ -107,6 +107,17 @@ async function makeVendor(
     [newDesign.rows[0].id, skus.slice(1)],
   )
 
+  // Sales for every design. Vendor-scoped only through `products.sku`, which is
+  // exactly the indirect case discovery is built to find — and a table the
+  // suite would otherwise pass over vacuously, because an empty table leaks
+  // nothing.
+  await c.query(
+    `insert into sku_sales_daily (sku, date, units, orders, revenue)
+     select s, current_date - (i * 10)::integer, (i * 2)::integer, i::integer, i * 3499.00
+       from unnest($1::text[]) with ordinality as t(s, i)`,
+    [skus],
+  )
+
   return {
     id: vendorId,
     code: opts.code,
@@ -157,6 +168,16 @@ export async function seedWorld(c: Client): Promise<World> {
       [a.id, aOwner, aStaff, b.id, bOwner, suspended],
     )
     await c.query(`update app_users set status = 'suspended' where id = $1`, [suspended])
+
+    // Pooja has looked at both weavers' portals. Rows on both sides, because a
+    // weaver must read zero of these — including her own. Whether Nerige looked
+    // at her screen is not information the portal owes her mid-order, so the
+    // correct count for a vendor session is zero either way, and discovery will
+    // check it against the OTHER vendor's rows.
+    await c.query(
+      `insert into impersonation_log (admin_user_id, vendor_id) values ($1, $2), ($1, $3)`,
+      [pooja, a.id, b.id],
+    )
 
     await c.query('commit')
 

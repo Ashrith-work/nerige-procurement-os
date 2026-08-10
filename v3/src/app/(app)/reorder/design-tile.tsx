@@ -1,50 +1,97 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
-import { shopifyImage } from '@/lib/orders/view'
 import { useSelection, type Selected } from '@/lib/reorder/selection'
 import { StockLine } from '@/components/stock-line'
+import { SalesBadges } from '@/components/sales-badges'
 import { getDictionary } from '@/lib/i18n'
+import { resolveProductImage, cropStyle, sizedImage, type CropRect } from '@/lib/products/image'
+import { unitsColumn, tierColumn, type Tier, type Window } from '@/lib/reorder/sort'
 
 export interface Design {
   sku: string
   title: string | null
   image_url: string | null
+  image_urls: string[] | null
+  display_image_position: number | null
+  manual_image_url: string | null
+  crop_json: CropRect | null
+  crop_mode: string | null
   price: string | number | null
   qty_available: number
   stock_synced_at: string | null
+  units_30d: number | null
+  units_60d: number | null
+  units_90d: number | null
+  tier_30: number | null
+  tier_60: number | null
+  tier_90: number | null
+  sales_synced_at: string | null
 }
 
+// Pooja's screen, and Pooja reads English. The weaver-facing screens take their
+// language from her profile; this one has no reason to.
 const t = getDictionary('en')
 
 /**
  * One saree in the grid.
  *
- * The photograph, the code, a badge. This screen should feel like browsing the
- * storefront, and a wall of body text is what turns a grid back into a list.
- * Title, price and stock live behind the info button, one tap away, for when
- * she cannot tell two pinks apart.
- *
- * The top quarter of every frame is cropped away, matching the cards: the
- * catalogue is shot on a model and the saree is in the lower three quarters.
+ * The photograph, the code, a stock badge, and — since Phase 4 — two quiet
+ * sales badges beneath. This screen should feel like browsing the storefront,
+ * and a wall of body text is what turns a grid back into a list. Title, price
+ * and stock live behind the info button, one tap away, for when she cannot tell
+ * two pinks apart.
  *
  * The whole tile is the target, not a checkbox in the corner: she is tapping
  * with a thumb, at speed, and "tap the picture" is the only interaction that
  * needs no explanation.
+ *
+ * The crop is per product now rather than a fixed 25% off the top, because the
+ * admin can draw one — see `resolveProductImage`. A plain <img> rather than
+ * next/image because a pasted `manual_image_url` can be on any host and
+ * next/image refuses anything outside `remotePatterns`; the CDN is already
+ * being asked for the exact width, so the optimiser was only ever a second hop.
  */
-export function DesignTile({ design, vendorCode }: { design: Design; vendorCode: string }) {
+export function DesignTile({
+  design,
+  vendorCode,
+  window,
+}: {
+  design: Design
+  vendorCode: string
+  window: Window
+}) {
   const { has, toggle } = useSelection()
   const [info, setInfo] = useState(false)
   const selected = has(design.sku)
-  const src = shopifyImage(design.image_url, 400)
+
+  const image = resolveProductImage({
+    imageUrls: design.image_urls,
+    displayImagePosition: design.display_image_position,
+    manualImageUrl: design.manual_image_url,
+    cropJson: design.crop_json,
+    cropMode: design.crop_mode,
+    imageUrl: design.image_url,
+  })
+
+  const src = sizedImage(image.url, 400)
+
+  const units = (design[unitsColumn(window)] as number | null) ?? 0
+  const tier = (design[tierColumn(window)] as number | null) as Tier | null
+  // No sales sync has ever run: show nothing rather than a confident zero,
+  // which would read as "this has never sold" instead of "we do not know yet".
+  const salesTier = design.sales_synced_at ? tier : null
 
   const item: Selected = {
     sku: design.sku,
     vendorCode,
     title: design.title,
-    imageUrl: design.image_url,
-    reason: design.qty_available === 0 ? 'sold_out' : design.qty_available === 1 ? 'last_piece' : null,
+    // The snapshot on the order line is what the weaver will see for months, so
+    // it is the RESOLVED image — the one with the admin's crop and choice — not
+    // the raw Shopify column.
+    imageUrl: image.url,
+    reason:
+      design.qty_available === 0 ? 'sold_out' : design.qty_available === 1 ? 'last_piece' : null,
   }
 
   return (
@@ -57,21 +104,14 @@ export function DesignTile({ design, vendorCode }: { design: Design; vendorCode:
       >
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-stone-100">
           {src ? (
-            // Same crop as DesignCard: the inner box is 4/3 the height and
-            // pulled up by 1/3, so only the bottom three quarters is visible.
-            // unoptimized because shopifyImage() already asked Shopify's CDN
-            // for this exact width — Vercel's optimiser would be a second hop
-            // for a file that is already the right size.
-            <div className="absolute inset-x-0" style={{ top: '-33.3333%', height: '133.3333%' }}>
-              <Image
-                src={src}
-                alt={design.title ?? design.sku}
-                fill
-                sizes="(max-width: 640px) 50vw, 20vw"
-                className="object-cover"
-                unoptimized
-              />
-            </div>
+            // eslint-disable-next-line @next/next/no-img-element -- see header
+            <img
+              src={src}
+              alt={design.title ?? design.sku}
+              className="absolute max-w-none object-cover"
+              style={cropStyle(image.crop)}
+              loading="lazy"
+            />
           ) : (
             <span className="absolute inset-0 flex items-center justify-center text-xs text-stone-400">
               No photo
@@ -101,6 +141,8 @@ export function DesignTile({ design, vendorCode }: { design: Design; vendorCode:
         <p className="mt-1.5 font-mono text-[13px] leading-tight break-words text-stone-700">
           {design.sku}
         </p>
+
+        <SalesBadges units={units} tier={salesTier} window={window} t={t} />
       </button>
 
       {/* Deliberately outside the selecting button: reading about a saree and
@@ -135,6 +177,9 @@ export function DesignTile({ design, vendorCode }: { design: Design; vendorCode:
             )}
             <div className="mt-2">
               <StockLine qty={design.qty_available} syncedAt={design.stock_synced_at} t={t} />
+            </div>
+            <div className="mt-1">
+              <SalesBadges units={units} tier={salesTier} window={window} t={t} />
             </div>
             <button
               type="button"

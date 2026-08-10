@@ -278,15 +278,28 @@ async function provision(
 
   try {
     await db.query(
-      `insert into app_users (id, role, status, full_name, email, phone, locale)
+      `insert into app_users (id, role, status, full_name, email, phone, locale_override)
        values ($1, $2::app_role, 'active', $3, $4, $5, $6)`,
-      [data.user.id, opts.role, opts.name, email, opts.phone ?? null, opts.locale],
+      [
+        data.user.id,
+        opts.role,
+        opts.name,
+        email,
+        opts.phone ?? null,
+        // A weaver follows her house's default; only an internal user, who has
+        // no vendor to inherit from, carries a language of her own.
+        opts.vendorId ? null : opts.locale,
+      ],
     )
     if (opts.vendorId) {
       await db.query(
         `insert into vendor_users (vendor_id, user_id, is_owner) values ($1, $2, true)`,
         [opts.vendorId, data.user.id],
       )
+      await db.query(`update vendors set default_locale = $2 where id = $1`, [
+        opts.vendorId,
+        opts.locale,
+      ])
     }
   } catch (err) {
     // Roll back the auth user so a retry is not blocked by a duplicate.

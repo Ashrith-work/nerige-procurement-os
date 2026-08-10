@@ -404,7 +404,7 @@ describe('the vendor write surface', () => {
     // Kannada must not need Pooja.
     const n = await db.asUser(w.vendorB.ownerUser, async (c) => {
       const res = await c.query(
-        `update app_users set full_name = 'Renamed', locale = 'kn' where id = $1`,
+        `update app_users set full_name = 'Renamed', locale_override = 'kn' where id = $1`,
         [w.vendorB.ownerUser],
       )
       return res.rowCount
@@ -534,19 +534,52 @@ describe('the rule that must never be broken', () => {
   })
 
   it('has no policy or function that filters on shopify_status', async () => {
+    // The check is "mentions it at all", which is deliberately blunt — a
+    // filter can be written in more ways than a regex will catch, and the cost
+    // of the bluntness is one allowlist entry.
+    //
+    // `sync_upsert_products` is on that list because it WRITES the column: the
+    // Shopify sync records the status as a fact, which is exactly what the
+    // schema says to do with it. It contains no predicate on the column, and
+    // the behavioural guarantee — that sold-out drafts stay in the pool — is
+    // asserted against real rows by the test above rather than by grepping SQL.
+    const ALLOWED_TO_WRITE_IT = ['sync_upsert_products']
+
     const offenders = await db.asAdmin(async (c) => {
       const { rows } = await c.query<{ what: string }>(
         `select p.proname as what
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-          where n.nspname in ('public', 'app') and p.prosrc ilike '%shopify_status%'
+          where n.nspname in ('public', 'app')
+            and p.prosrc ilike '%shopify_status%'
+            and p.proname <> all ($1::text[])
           union all
          select pol.polname
            from pg_policy pol
           where pg_get_expr(pol.polqual, pol.polrelid) ilike '%shopify_status%'
              or pg_get_expr(pol.polwithcheck, pol.polrelid) ilike '%shopify_status%'`,
+        [ALLOWED_TO_WRITE_IT],
       )
       return rows.map((r) => r.what)
     })
     expect(offenders).toEqual([])
+  })
+
+  it('never filters the allowlisted writer on shopify_status either', async () => {
+    // The allowlist above buys `sync_upsert_products` the right to write the
+    // column, not to read it back. Any comparison operator applied to it inside
+    // that function would be a filter wearing a write's clothes.
+    const source = await db.asAdmin(async (c) => {
+      const { rows } = await c.query<{ prosrc: string }>(
+        `select prosrc from pg_proc where proname = 'sync_upsert_products'`,
+      )
+      return rows[0]?.prosrc ?? ''
+    })
+
+    const comparisons = [...source.matchAll(/shopify_status\s*(=|<>|!=|<|>|~|\bin\b|\blike\b)/gi)]
+      // `shopify_status = excluded.shopify_status` is the assignment half of an
+      // ON CONFLICT DO UPDATE, which is a write.
+      .filter((m) => !/shopify_status\s*=\s*excluded\./i.test(m[0] + source.slice(m.index ?? 0, (m.index ?? 0) + 40)))
+
+    expect(comparisons.map((m) => m[0])).toEqual([])
   })
 })

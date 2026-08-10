@@ -1,0 +1,158 @@
+{
+  "common": {
+    "signIn": "साइन इन करें",
+    "signOut": "साइन आउट",
+    "back": "वापस",
+    "save": "सहेजें",
+    "saving": "सहेजा जा रहा है…",
+    "cancel": "रद्द करें",
+    "close": "बंद करें",
+    "language": "भाषा",
+    "search": "खोजें",
+    "clear": "साफ़ करें",
+    "print": "प्रिंट करें",
+    "next": "आगे",
+    "previous": "पिछला",
+    "page": "पृष्ठ {n} / {total}",
+    "copy": "कॉपी करें",
+    "copied": "कॉपी हो गया",
+    "yes": "हाँ",
+    "no": "नहीं",
+    "notBuiltYet": "अभी तैयार नहीं है"
+  },
+
+  "login": {
+    "brand": "Nerige",
+    "userId": "यूज़र आईडी",
+    "userIdHint": "Nerige ने आपको जो आईडी दी है।",
+    "userIdPlaceholder": "hdr",
+    "password": "पासवर्ड",
+    "signingIn": "साइन इन हो रहा है…",
+    "wrongCredentials": "वह यूज़र आईडी या पासवर्ड सही नहीं है।",
+    "byInvitation": "पहुँच केवल निमंत्रण से है। साइन इन न कर पाएँ तो Nerige टीम से पूछें।"
+  },
+
+  "nav": {
+    "myOrders": "मेरे ऑर्डर",
+    "myDesigns": "मेरे डिज़ाइन",
+    "reorder": "दोबारा ऑर्डर",
+    "orders": "ऑर्डर"
+  },
+
+  "order": {
+    "orderFrom": "Nerige से ऑर्डर",
+    "issued": "भेजा गया",
+    "sectionRestock": "इन्हें दोबारा बनाएँ",
+    "sectionRestockHelp": "पैक करने से पहले हर साड़ी पर दिखाया गया कोड लिखें।",
+    "sectionNewDesigns": "नए डिज़ाइन",
+    "sectionNewDesignsHelp": "यहाँ किसी का भी अभी कोड नहीं है।",
+    "noCode": "कोई कोड नहीं, आने पर हम लेबल लगाएँगे",
+    "pieces_one": "{n} साड़ी",
+    "pieces_other": "{n} साड़ियाँ",
+    "likeThese": "इनके जैसी और बनाएँ",
+    "referencePhotos": "केवल संदर्भ के लिए — कोड न लिखें",
+    "soldOut": "बिक गई",
+    "lastPiece": "आख़िरी साड़ी",
+
+    "accept": "ऑर्डर स्वीकार करें",
+    "accepting": "स्वीकार किया जा रहा है…",
+    "promisedDate": "ये कब तैयार होंगी?",
+    "promisedDateHint": "वह तारीख़ दें जब तक आप इन्हें तैयार कर सकें।",
+    "acceptedOn": "आपने यह ऑर्डर स्वीकार किया",
+    "promised": "वादा की गई तारीख़",
+
+    "dispatch": "भेजा गया चिह्नित करें",
+    "dispatching": "सहेजा जा रहा है…",
+    "dispatchDate": "भेजने की तारीख़",
+    "docket": "ट्रांसपोर्ट डॉकेट नंबर",
+    "docketHint": "वैकल्पिक। ट्रांसपोर्टर द्वारा दिया गया नंबर।",
+    "dispatchedOn": "भेजा गया",
+    "docketIs": "डॉकेट",
+
+    "cancelled": "यह ऑर्डर रद्द कर दिया गया।",
+    "received": "Nerige को यह ऑर्डर मिल गया।",
+    "dateInPast": "आज या उसके बाद की तारीख़ चुनें।",
+    "couldNotSave": "उसे सहेजा नहीं जा सका। कृपया दोबारा कोशिश करें।",
+    "notFound": "वह ऑर्डर यहाँ नहीं है",
+    "notFoundHelp": "हो सकता है वह रद्द हो गया हो, या वह लिंक किसी और का हो।",
+    "emptyOrder": "इस ऑर्डर में कोई लाइन नहीं है।"
+  },
+
+  "status": {
+    "issued": "भेजा गया",
+    "accepted": "स्वीकार किया",
+    "dispatched": "रवाना किया",
+    "received": "प्राप्त हुआ",
+    "cancelled": "रद्द किया"
+  },
+
+  "portal": {
+    "toAccept": "स्वीकार करने के लिए",
+    "toAcceptHelp": "Nerige को बताएँ कि ये कब तक तैयार होंगी।",
+    "inProgress": "चल रहा है",
+    "inProgressHelp": "स्वीकार किया गया। भेजते समय चिह्नित करें।",
+    "sent": "भेजा गया",
+    "nothingYet": "आपको अभी तक कुछ नहीं भेजा गया है।",
+    "linesInOrder": "{n} लाइनें",
+    "promisedBy": "वादा",
+    "sentOn": "भेजा गया"
+  },
+
+  "tutorial": {
+    "heading": "यह कैसे काम करता है",
+    "watch": "पहले यह देखें",
+    "stepsHeading": "चरण",
+    "step1": "ऑर्डर खोलें और हर तस्वीर देखें।",
+    "step2": "साड़ियाँ तैयार होने की तारीख़ बताएँ, फिर स्वीकार करें दबाएँ।",
+    "step3": "साड़ियाँ बुनें। हर तस्वीर के नीचे दिखाया गया कोड साड़ी पर लिखें।",
+    "step4": "नए डिज़ाइन कार्ड पर कोई कोड नहीं होता। उन पर कुछ न लिखें।",
+    "step5": "भेजते समय, भेजने की तारीख़ और ट्रांसपोर्ट डॉकेट नंबर दर्ज करें।",
+    "unavailable": "वीडियो लोड नहीं हो सका। मदद के लिए Nerige टीम से पूछें।",
+    "openOnYoutube": "YouTube पर खोलें"
+  },
+
+  "catalogue": {
+    "title": "मेरे डिज़ाइन",
+    "everyDesign": "Nerige आपके लिए जो भी डिज़ाइन रखता है।",
+    "collections": "संग्रह",
+    "designsCount": "{n} डिज़ाइन",
+    "search": "कोड या नाम से खोजें",
+    "searchAction": "खोजें",
+    "clear": "साफ़ करें",
+    "resultsFor": "इसके परिणाम",
+    "noResults": "उससे कुछ मेल नहीं खाया। कोड का कोई हिस्सा आज़माएँ, जैसे VINT या 15549।",
+    "allCollections": "सभी संग्रह",
+    "allColours": "सभी रंग",
+    "allFabrics": "सभी कपड़े",
+    "backToCollections": "सभी संग्रह",
+    "print": "प्रिंट करें",
+    "page": "पृष्ठ {n} / {total}",
+    "next": "आगे",
+    "previous": "पिछला",
+
+    "inStock_one": "{n} स्टॉक में",
+    "inStock_other": "{n} स्टॉक में",
+    "soldOut": "बिक गई",
+    "checkedAgo": "{ago} जाँचा गया",
+    "neverChecked": "स्टॉक कभी नहीं जाँचा गया"
+  },
+
+  "badge": {
+    "soldInWindow_one": "{days} दिनों में {n} बिकी",
+    "soldInWindow_other": "{days} दिनों में {n} बिकीं",
+    "neverSold": "एक साल से नहीं बिकी",
+    "selling": "बिक रही है",
+    "slowing": "धीमी हो रही है",
+    "inStockNotMoving": "स्टॉक है, बिक नहीं रही",
+    "dormant": "निष्क्रिय"
+  },
+
+  "auth": {
+    "cannotSignIn": "आपको साइन इन नहीं कर सके",
+    "somethingWrong": "कुछ गड़बड़ हुई। कृपया दोबारा साइन इन करने की कोशिश करें।",
+    "notProvisioned": "वह खाता इस पोर्टल के लिए तैयार नहीं है। पहुँच केवल निमंत्रण से है — आपको जोड़ने के लिए Nerige टीम से कहें।",
+    "backToSignIn": "वापस साइन इन पर",
+    "noAccess": "उस पृष्ठ तक आपकी पहुँच नहीं है",
+    "noAccessHelp": "अगर आपको लगता है कि यह ग़लत है, तो अपना खाता जाँचने के लिए Nerige टीम से कहें।"
+  }
+}

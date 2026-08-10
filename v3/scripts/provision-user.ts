@@ -20,6 +20,11 @@
  *
  * A user ID is an email address or a short handle; see src/lib/auth/user-id.ts.
  * Optional: --phone (contact only, no longer a credential), --locale kn|ta|te|hi|en
+ *
+ * `--locale` on a vendor sets `vendors.default_locale` — the language of the
+ * WEAVER, which every login at that house then inherits. On an internal user it
+ * sets that person's own `locale_override`, because Pooja has no vendor to
+ * inherit from.
  */
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
@@ -158,7 +163,11 @@ async function main() {
     full_name: name,
     email,
     phone: phone || null,
-    locale,
+    // Null for a weaver: her language is a property of the WEAVER, written to
+    // vendors.default_locale below, so that a second login at the same house
+    // inherits it instead of arriving in English. An override here is the
+    // exception, and provisioning is not the moment to declare one.
+    locale_override: role === 'vendor' ? null : locale,
   })
   if (profileError) {
     // Roll back the auth user so a retry is not blocked by a duplicate.
@@ -174,6 +183,15 @@ async function main() {
       await admin.auth.admin.deleteUser(created.user.id)
       throw new Error(`Could not link to vendor: ${error.message}`)
     }
+
+    const { error: localeError } = await admin
+      .from('vendors')
+      .update({ default_locale: locale })
+      .eq('id', vendorId)
+    if (localeError) {
+      throw new Error(`Linked, but could not set the vendor language: ${localeError.message}`)
+    }
+    console.log(`  Portal language for this weaver: ${locale}`)
   }
 
   console.log(`\n  Provisioned ${name} (${role})`)

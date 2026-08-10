@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Input, Select, Button } from '@/components/ui/primitives'
-import { availableSorts, type SortKey } from '@/lib/reorder/sort'
+import { availableSorts, SORT_STRATEGIES, WINDOWS, type SortKey, type Window } from '@/lib/reorder/sort'
 
 export interface VendorOption {
   code: string
@@ -30,6 +30,7 @@ export function FilterBar({
   collection,
   q,
   sort,
+  window,
 }: {
   vendors: VendorOption[]
   collections: CollectionOption[]
@@ -37,22 +38,26 @@ export function FilterBar({
   collection: string
   q: string
   sort: SortKey
+  window: Window
 }) {
   const router = useRouter()
 
-  const go = (next: Partial<{ vendor: string; c: string; q: string; sort: string }>) => {
+  const go = (
+    next: Partial<{ vendor: string; c: string; q: string; sort: string; w: string }>,
+  ) => {
     const p = new URLSearchParams()
-    const merged = { vendor, c: collection, q, sort, ...next }
+    const merged = { vendor, c: collection, q, sort, w: String(window), ...next }
     if (merged.vendor) p.set('vendor', merged.vendor)
     if (merged.c) p.set('c', merged.c)
     if (merged.q) p.set('q', merged.q)
     if (merged.sort) p.set('sort', merged.sort)
+    if (merged.w) p.set('w', merged.w)
     router.push(`/reorder?${p.toString()}`)
   }
 
   return (
     <div className="space-y-2">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-4">
         <Select
           aria-label="Vendor"
           value={vendor}
@@ -85,6 +90,21 @@ export function FilterBar({
           {availableSorts().map((s) => (
             <option key={s.key} value={s.key}>
               {s.label}
+            </option>
+          ))}
+        </Select>
+
+        {/* Only offered when it changes anything. Beside "Newest first" a sales
+            window is a control with no effect, which reads as broken. */}
+        <Select
+          aria-label="Sales window"
+          value={String(window)}
+          disabled={!SORT_STRATEGIES[sort].windowed}
+          onChange={(e) => go({ w: e.target.value })}
+        >
+          {WINDOWS.map((days) => (
+            <option key={days} value={days}>
+              Sold in {days} days
             </option>
           ))}
         </Select>

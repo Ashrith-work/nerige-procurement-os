@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm run i18n:check",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "i18n:check": "tsx scripts/check-messages.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:isolation": "vitest run tests/isolation.test.ts",
@@ -19,15 +21,18 @@
     "preview:catalogue": "tsx scripts/preview-screen.tsx --screen catalogue",
     "provision": "tsx scripts/provision-user.ts",
     "provision:vendors": "tsx scripts/provision-vendors.ts",
-    "verify": "npm run typecheck && npm run lint && npm run test"
+    "verify": "npm run i18n:check && npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "google-auth-library": "^11.0.0",
     "lucide-react": "^1.28.0",
     "next": "16.3.0",
+    "next-intl": "^4.13.6",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.6.0",

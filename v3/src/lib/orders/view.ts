@@ -36,6 +36,18 @@ export interface RestockLine {
   imageUrl: string | null
   quantity: number
   reorderReason: ReorderReason | null
+  /**
+   * How this design is selling right now — deliberately NOT a snapshot.
+   *
+   * Everything else on the card is frozen at the moment the order was issued,
+   * because a re-shoot must not change the photograph on an order she has
+   * already accepted. This is the exception, and it is not an inconsistency:
+   * "36 sold in 90 days" is not part of what was ordered, it is context about
+   * the design, and context that is three months stale is worth less than
+   * none. Null until a sales sync has run.
+   */
+  unitsSold: number | null
+  tier: number | null
 }
 
 /** "Make me more like these." Nothing comes back with a code on it. */
@@ -69,6 +81,10 @@ export interface RawOrderLine {
   snapshot_title: string | null
   snapshot_image_url: string | null
   order_line_refs: { sku: string; snapshot_image_url: string | null }[] | null
+  products:
+    | { units_90d: number | null; tier_90: number | null; sales_synced_at: string | null }
+    | { units_90d: number | null; tier_90: number | null; sales_synced_at: string | null }[]
+    | null
 }
 
 export interface RawOrder {
@@ -93,7 +109,8 @@ export const ORDER_SELECT = `
   order_lines (
     id, line_type, sku, brief, quantity, reorder_reason,
     snapshot_title, snapshot_image_url,
-    order_line_refs ( sku, snapshot_image_url )
+    order_line_refs ( sku, snapshot_image_url ),
+    products ( units_90d, tier_90, sales_synced_at )
   )
 `
 
@@ -111,14 +128,25 @@ export function toVendorOrder(row: RawOrder): VendorOrder {
 
     restock: lines
       .filter((l): l is RawOrderLine & { sku: string } => l.line_type === 'restock' && !!l.sku)
-      .map((l) => ({
-        id: l.id,
-        sku: l.sku,
-        title: l.snapshot_title,
-        imageUrl: l.snapshot_image_url,
-        quantity: l.quantity,
-        reorderReason: (l.reorder_reason as ReorderReason | null) ?? null,
-      })),
+      .map((l) => {
+        // PostgREST returns an embed as an array when it cannot prove the
+        // relationship is to-one. order_lines.sku is a plain FK, so there is at
+        // most one — normalise both shapes rather than assuming either.
+        const product = Array.isArray(l.products) ? l.products[0] : l.products
+
+        return {
+          id: l.id,
+          sku: l.sku,
+          title: l.snapshot_title,
+          imageUrl: l.snapshot_image_url,
+          quantity: l.quantity,
+          reorderReason: (l.reorder_reason as ReorderReason | null) ?? null,
+          // Null until a sales sync has run: a confident zero would read as
+          // "this has never sold" rather than "we do not know yet".
+          unitsSold: product?.sales_synced_at ? (product.units_90d ?? 0) : null,
+          tier: product?.sales_synced_at ? (product.tier_90 ?? null) : null,
+        }
+      }),
 
     newDesigns: lines
       .filter((l): l is RawOrderLine & { brief: string } => l.line_type === 'new_design' && !!l.brief)

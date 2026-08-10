@@ -1,6 +1,8 @@
 import type { RestockLine, NewDesignLine, VendorOrder } from '@/lib/orders/view'
-import { formatPieces, type Dictionary } from '@/lib/i18n'
+import { formatPieces, type Dictionary, type Locale } from '@/lib/i18n'
 import { DesignCard, NextPhoto, type PhotoComponent } from '@/components/design-card'
+import { SalesBadges } from '@/components/sales-badges'
+import type { Tier } from '@/lib/reorder/sort'
 
 /**
  * The order screen's two kinds of card.
@@ -15,17 +17,23 @@ import { DesignCard, NextPhoto, type PhotoComponent } from '@/components/design-
  */
 
 /** How many, said plainly. The only number on this screen she acts on. */
-function Quantity({ n, t }: { n: number; t: Dictionary }) {
-  return <p className="text-[17px] font-medium tabular-nums text-stone-900">{formatPieces(t, n)}</p>
+function Quantity({ n, t, locale }: { n: number; t: Dictionary; locale: Locale }) {
+  return (
+    <p className="text-[17px] font-medium tabular-nums text-stone-900">
+      {formatPieces(t, n, locale)}
+    </p>
+  )
 }
 
 export function RestockCard({
   line,
   t,
+  locale = 'en',
   Photo = NextPhoto,
 }: {
   line: RestockLine
   t: Dictionary
+  locale?: Locale
   Photo?: PhotoComponent
 }) {
   return (
@@ -34,7 +42,19 @@ export function RestockCard({
       title={line.title}
       imageUrl={line.imageUrl}
       Photo={Photo}
-      footer={<Quantity n={line.quantity} t={t} />}
+      footer={<Quantity n={line.quantity} t={t} locale={locale} />}
+      // Live rather than snapshotted, on purpose — see RestockLine.unitsSold.
+      // Below the quantity, quiet: nothing on this card may compete with the
+      // code she is about to write on the fabric.
+      badges={
+        <SalesBadges
+          units={line.unitsSold ?? 0}
+          tier={(line.tier as Tier | null) ?? null}
+          window={90}
+          t={t}
+          locale={locale}
+        />
+      }
     />
   )
 }
@@ -42,10 +62,12 @@ export function RestockCard({
 export function NewDesignCard({
   line,
   t,
+  locale = 'en',
   Photo = NextPhoto,
 }: {
   line: NewDesignLine
   t: Dictionary
+  locale?: Locale
   Photo?: PhotoComponent
 }) {
   return (
@@ -73,7 +95,7 @@ export function NewDesignCard({
           it tells her not to go looking for one. */}
       <p className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-600">{t.order.noCode}</p>
 
-      <Quantity n={line.quantity} t={t} />
+      <Quantity n={line.quantity} t={t} locale={locale} />
     </article>
   )
 }
@@ -96,10 +118,12 @@ function SectionHeading({ title, help }: { title: string; help: string }) {
 export function OrderSections({
   order,
   t,
+  locale = 'en',
   Photo = NextPhoto,
 }: {
   order: VendorOrder
   t: Dictionary
+  locale?: Locale
   Photo?: PhotoComponent
 }) {
   if (order.restock.length === 0 && order.newDesigns.length === 0) {
@@ -112,7 +136,7 @@ export function OrderSections({
         <section className="space-y-4">
           <SectionHeading title={t.order.sectionRestock} help={t.order.sectionRestockHelp} />
           {order.restock.map((line) => (
-            <RestockCard key={line.id} line={line} t={t} Photo={Photo} />
+            <RestockCard key={line.id} line={line} t={t} locale={locale} Photo={Photo} />
           ))}
         </section>
       )}
@@ -121,7 +145,7 @@ export function OrderSections({
         <section className="space-y-4">
           <SectionHeading title={t.order.sectionNewDesigns} help={t.order.sectionNewDesignsHelp} />
           {order.newDesigns.map((line) => (
-            <NewDesignCard key={line.id} line={line} t={t} Photo={Photo} />
+            <NewDesignCard key={line.id} line={line} t={t} locale={locale} Photo={Photo} />
           ))}
         </section>
       )}

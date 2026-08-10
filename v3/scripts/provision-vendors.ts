@@ -137,7 +137,10 @@ async function main() {
       status: 'active',
       full_name: name,
       email,
-      locale: 'en',
+      // Null, so she follows vendors.default_locale. Setting 'en' here would
+      // out-rank the language the admin later chooses for her weaver and leave
+      // the portal stubbornly English with no visible cause.
+      locale_override: null,
     })
     if (profileError) {
       await admin.auth.admin.deleteUser(created.user.id)

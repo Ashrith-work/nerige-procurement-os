@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { requireVendor } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { getDictionary, type Dictionary } from '@/lib/i18n'
+import { getDictionary, interpolate, formatCount, type Dictionary, type Locale } from '@/lib/i18n'
 import { DesignCard } from '@/components/design-card'
 import { StockLine } from '@/components/stock-line'
+import { SalesBadges } from '@/components/sales-badges'
+import { resolveProductImage, type CropRect } from '@/lib/products/image'
+import type { Tier } from '@/lib/reorder/sort'
 import { PrintButton } from '@/components/print-button'
 import { Input, Select, Button, PageHeader, EmptyState } from '@/components/ui/primitives'
 
@@ -16,8 +19,16 @@ interface Design {
   sku: string
   title: string | null
   image_url: string | null
+  image_urls: string[] | null
+  display_image_position: number | null
+  manual_image_url: string | null
+  crop_json: CropRect | null
+  crop_mode: string | null
   qty_available: number
   stock_synced_at: string | null
+  units_90d: number | null
+  tier_90: number | null
+  sales_synced_at: string | null
 }
 
 interface Facet {
@@ -39,11 +50,15 @@ interface Facet {
  * fabric — the three things actually encoded in the SKU. Pagination handles the
  * volume; the filters handle the finding.
  *
- * What she can see is not decided here. `products` has RLS forced and
- * `products_select_own` scopes every row to her own vendor_id, so this page
- * cannot show another weaver's designs even if it forgot to filter. The queries
- * below carry no vendor predicate at all, deliberately — the database is the
- * boundary, not this file.
+ * For a weaver, what she can see is not decided here: `products` has RLS forced
+ * and `products_select_own` scopes every row to her own vendor_id, so this page
+ * could not show another weaver's designs even if it forgot to filter.
+ *
+ * The explicit `vendor_id` predicate below exists for the other caller. When
+ * Pooja opens this screen as a weaver she is still an admin, and
+ * `products_select_internal` returns all 9,827 designs — the scope has to be
+ * stated because RLS is not narrowing it. `vendor_facets` is filtered for the
+ * same reason.
  */
 export default async function VendorCatalogue({
   searchParams,
@@ -68,6 +83,7 @@ export default async function VendorCatalogue({
   const { data: facetRows } = await supabase
     .from('vendor_facets')
     .select('facet, value, design_count')
+    .eq('vendor_id', user.vendorId)
     .order('design_count', { ascending: false })
 
   const facets = (facetRows ?? []) as Facet[]
@@ -131,6 +147,8 @@ export default async function VendorCatalogue({
       <Cards
         supabase={supabase}
         t={t}
+        locale={user.locale}
+        vendorId={user.vendorId}
         collection={collection}
         colour={colour}
         fabric={fabric}
@@ -175,6 +193,8 @@ function FacetSelect({
 async function Cards({
   supabase,
   t,
+  locale,
+  vendorId,
   collection,
   colour,
   fabric,
@@ -183,6 +203,8 @@ async function Cards({
 }: {
   supabase: Supabase
   t: Dictionary
+  locale: Locale
+  vendorId: string
   collection: string
   colour: string
   fabric: string
@@ -191,9 +213,15 @@ async function Cards({
 }) {
   let query = supabase
     .from('products')
-    .select('sku, title, image_url, qty_available, stock_synced_at', {
-      count: 'exact',
-    })
+    .select(
+      `sku, title, image_url, image_urls, display_image_position, manual_image_url,
+       crop_json, crop_mode, qty_available, stock_synced_at,
+       units_90d, tier_90, sales_synced_at`,
+      { count: 'exact' },
+    )
+    .eq('vendor_id', vendorId)
+    // Designs Shopify has stopped returning are not hers to be asked about.
+    .eq('is_active', true)
 
   if (collection) query = query.eq('collection', collection)
   if (colour) query = query.eq('colour_code', colour)
@@ -243,7 +271,7 @@ async function Cards({
         <h2 className="text-base font-medium text-stone-900">
           {heading}{' '}
           <span className="font-normal text-stone-400 tabular-nums">
-            {t.catalogue.designsCount.replace('{n}', String(total))}
+            {interpolate(t.catalogue.designsCount, { n: formatCount(total, locale) })}
           </span>
         </h2>
       </div>
@@ -251,16 +279,44 @@ async function Cards({
       {/* One column on a phone, more where there is room. Cards never split
           across a column or a printed page. */}
       <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 print:columns-2">
-        {designs.map((d) => (
-          <div key={d.sku} className="mb-4">
-            <DesignCard
-              sku={d.sku}
-              title={d.title}
-              imageUrl={d.image_url}
-              footer={<StockLine qty={d.qty_available} syncedAt={d.stock_synced_at} t={t} />}
-            />
-          </div>
-        ))}
+        {designs.map((d) => {
+          const image = resolveProductImage({
+            imageUrls: d.image_urls,
+            displayImagePosition: d.display_image_position,
+            manualImageUrl: d.manual_image_url,
+            cropJson: d.crop_json,
+            cropMode: d.crop_mode,
+            imageUrl: d.image_url,
+          })
+
+          return (
+            <div key={d.sku} className="mb-4">
+              <DesignCard
+                sku={d.sku}
+                title={d.title}
+                imageUrl={image.url}
+                crop={image.crop}
+                footer={
+                  <StockLine
+                    qty={d.qty_available}
+                    syncedAt={d.stock_synced_at}
+                    t={t}
+                    locale={locale}
+                  />
+                }
+                badges={
+                  <SalesBadges
+                    units={d.units_90d ?? 0}
+                    tier={d.sales_synced_at ? ((d.tier_90 as Tier | null) ?? null) : null}
+                    window={90}
+                    t={t}
+                    locale={locale}
+                  />
+                }
+              />
+            </div>
+          )
+        })}
       </div>
 
       {pages > 1 && (
@@ -273,7 +329,10 @@ async function Cards({
             <span />
           )}
           <span className="text-sm text-stone-500 tabular-nums">
-            {t.catalogue.page.replace('{n}', String(pageNumber)).replace('{total}', String(pages))}
+            {interpolate(t.catalogue.page, {
+              n: formatCount(pageNumber, locale),
+              total: formatCount(pages, locale),
+            })}
           </span>
           {pageNumber < pages ? (
             <Link href={href(pageNumber + 1)}>

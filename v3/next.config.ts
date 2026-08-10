@@ -1,4 +1,12 @@
 import type { NextConfig } from 'next'
+import createNextIntlPlugin from 'next-intl/plugin'
+
+/**
+ * next-intl, pointed at a request config that resolves the language from the
+ * session rather than from the URL. There is no `/kn/portal` and nothing for a
+ * weaver to pick before she can read her order — see src/i18n/request.ts.
+ */
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   images: {
@@ -19,4 +27,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withNextIntl(nextConfig)

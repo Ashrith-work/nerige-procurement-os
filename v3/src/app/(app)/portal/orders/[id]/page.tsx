@@ -17,10 +17,12 @@ export const metadata = { title: 'Order · Nerige' }
  * cards. No table anywhere: a table puts a code in a cell that clips, and the
  * code is the one string on this screen that gets copied onto fabric by hand.
  *
- * Note what this query does NOT contain: a vendor filter. There is no
- * `.eq('vendor_id', …)` because `orders_select_own` and `order_lines_select_own`
- * decide what comes back. If this file were edited carelessly it would return
- * nothing rather than someone else's order.
+ * The `.eq('vendor_id', …)` is belt and braces for a weaver — `orders_select_own`
+ * already decides what comes back, and a careless edit here would return
+ * nothing rather than someone else's order. It is load-bearing for the OTHER
+ * caller: when Pooja is viewing this portal as a weaver she is still an admin,
+ * and `orders_select_internal` returns every vendor's orders. Under
+ * impersonation the scope has to be stated, because RLS is not narrowing it.
  */
 export default async function VendorOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -28,7 +30,12 @@ export default async function VendorOrderPage({ params }: { params: Promise<{ id
   const t = getDictionary(user.locale)
   const supabase = await createClient()
 
-  const { data } = await supabase.from('orders').select(ORDER_SELECT).eq('id', id).maybeSingle()
+  const { data } = await supabase
+    .from('orders')
+    .select(ORDER_SELECT)
+    .eq('id', id)
+    .eq('vendor_id', user.vendorId)
+    .maybeSingle()
 
   if (!data) notFound()
 
@@ -59,12 +66,12 @@ export default async function VendorOrderPage({ params }: { params: Promise<{ id
         </p>
       </header>
 
-      <OrderSections order={order} t={t} />
+      <OrderSections order={order} t={t} locale={user.locale} />
 
       {/* One action, at the bottom, after she has seen everything she is being
           asked for. */}
       <section className="space-y-4 border-t border-stone-200 pt-6">
-        {order.status === 'issued' && (
+        {order.status === 'issued' && !user.readOnly && (
           <AcceptForm orderId={order.id} suggestedDate={suggestedDate} t={t} />
         )}
 
@@ -76,7 +83,7 @@ export default async function VendorOrderPage({ params }: { params: Promise<{ id
                 {order.promisedDate && format(new Date(order.promisedDate), 'd MMM yyyy')}
               </span>
             </p>
-            <DispatchForm orderId={order.id} t={t} />
+            {!user.readOnly && <DispatchForm orderId={order.id} t={t} />}
           </>
         )}
 

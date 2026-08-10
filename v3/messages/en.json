@@ -1,0 +1,158 @@
+{
+  "common": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "back": "Back",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "language": "Language",
+    "search": "Search",
+    "clear": "Clear",
+    "print": "Print",
+    "next": "Next",
+    "previous": "Previous",
+    "page": "Page {n} of {total}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "yes": "Yes",
+    "no": "No",
+    "notBuiltYet": "Not built yet"
+  },
+
+  "login": {
+    "brand": "Nerige",
+    "userId": "User ID",
+    "userIdHint": "The ID Nerige gave you.",
+    "userIdPlaceholder": "hdr",
+    "password": "Password",
+    "signingIn": "Signing in…",
+    "wrongCredentials": "That user ID or password is not right.",
+    "byInvitation": "Access is by invitation. Ask the Nerige team if you cannot sign in."
+  },
+
+  "nav": {
+    "myOrders": "My orders",
+    "myDesigns": "My designs",
+    "reorder": "Reorder",
+    "orders": "Orders"
+  },
+
+  "order": {
+    "orderFrom": "Order from Nerige",
+    "issued": "Sent",
+    "sectionRestock": "Make these again",
+    "sectionRestockHelp": "Write the code shown on each piece before you pack it.",
+    "sectionNewDesigns": "New designs",
+    "sectionNewDesignsHelp": "Nothing here has a code yet.",
+    "noCode": "No code, we will label this on arrival",
+    "pieces_one": "{n} piece",
+    "pieces_other": "{n} pieces",
+    "likeThese": "Make me more like these",
+    "referencePhotos": "For reference only — do not copy the code",
+    "soldOut": "Sold out",
+    "lastPiece": "Last piece",
+
+    "accept": "Accept order",
+    "accepting": "Accepting…",
+    "promisedDate": "When will these be ready?",
+    "promisedDateHint": "Give the date you can have them ready by.",
+    "acceptedOn": "You accepted this order",
+    "promised": "Promised by",
+
+    "dispatch": "Mark as dispatched",
+    "dispatching": "Saving…",
+    "dispatchDate": "Date sent",
+    "docket": "Transport docket number",
+    "docketHint": "Optional. The number the transporter gives you.",
+    "dispatchedOn": "Sent on",
+    "docketIs": "Docket",
+
+    "cancelled": "This order was cancelled.",
+    "received": "Nerige has received this order.",
+    "dateInPast": "Choose a date from today onwards.",
+    "couldNotSave": "Could not save that. Please try again.",
+    "notFound": "That order is not here",
+    "notFoundHelp": "It may have been cancelled, or the link may belong to someone else.",
+    "emptyOrder": "This order has no lines."
+  },
+
+  "status": {
+    "issued": "Sent",
+    "accepted": "Accepted",
+    "dispatched": "Dispatched",
+    "received": "Received",
+    "cancelled": "Cancelled"
+  },
+
+  "portal": {
+    "toAccept": "To accept",
+    "toAcceptHelp": "Tell Nerige when you can have these ready.",
+    "inProgress": "In progress",
+    "inProgressHelp": "Accepted. Mark them sent when they go.",
+    "sent": "Sent",
+    "nothingYet": "Nothing has been sent to you yet.",
+    "linesInOrder": "{n} lines",
+    "promisedBy": "Promised by",
+    "sentOn": "Sent"
+  },
+
+  "tutorial": {
+    "heading": "How this works",
+    "watch": "Watch this first",
+    "stepsHeading": "The steps",
+    "step1": "Open the order and look at each photograph.",
+    "step2": "Tell us the date you can have the pieces ready, then press accept.",
+    "step3": "Weave the sarees. Write the code shown under each photograph on the piece.",
+    "step4": "New design cards have no code. Leave those pieces unlabelled.",
+    "step5": "When you send them, enter the date sent and the transport docket number.",
+    "unavailable": "The video could not be loaded. Ask the Nerige team for help.",
+    "openOnYoutube": "Open on YouTube"
+  },
+
+  "catalogue": {
+    "title": "My designs",
+    "everyDesign": "Every design Nerige holds for you.",
+    "collections": "Collections",
+    "designsCount": "{n} designs",
+    "search": "Search by code or name",
+    "searchAction": "Search",
+    "clear": "Clear",
+    "resultsFor": "Results for",
+    "noResults": "Nothing matches that. Try part of a code, like VINT or 15549.",
+    "allCollections": "All collections",
+    "allColours": "All colours",
+    "allFabrics": "All fabrics",
+    "backToCollections": "All collections",
+    "print": "Print",
+    "page": "Page {n} of {total}",
+    "next": "Next",
+    "previous": "Previous",
+
+    "inStock_one": "{n} in stock",
+    "inStock_other": "{n} in stock",
+    "soldOut": "Sold out",
+    "checkedAgo": "checked {ago}",
+    "neverChecked": "stock never checked"
+  },
+
+  "badge": {
+    "soldInWindow_one": "{n} sold in {days} days",
+    "soldInWindow_other": "{n} sold in {days} days",
+    "neverSold": "Not sold in a year",
+    "selling": "Selling",
+    "slowing": "Slowing",
+    "inStockNotMoving": "In stock, not moving",
+    "dormant": "Dormant"
+  },
+
+  "auth": {
+    "cannotSignIn": "Could not sign you in",
+    "somethingWrong": "Something went wrong. Please try signing in again.",
+    "notProvisioned": "That account is not set up for this portal. Access is by invitation — ask the Nerige team to add you.",
+    "backToSignIn": "Back to sign in",
+    "noAccess": "You do not have access to that page",
+    "noAccessHelp": "If you think this is wrong, ask the Nerige team to check your account."
+  }
+}

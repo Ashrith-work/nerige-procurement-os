@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { applySort, resolveSort } from '@/lib/reorder/sort'
+import { applySort, resolveSort, resolveWindow } from '@/lib/reorder/sort'
 import { Button, EmptyState, PageHeader } from '@/components/ui/primitives'
 import { FilterBar, type VendorOption, type CollectionOption } from './filter-bar'
 import { DesignTile, type Design } from './design-tile'
@@ -24,11 +24,23 @@ const PAGE_SIZE = 120
  * Nothing renders until a vendor is chosen. That is not a loading state, it is
  * the design — 8,891 designs is not a grid anyone can browse, and the way this
  * work actually happens is one weaver at a time.
+ *
+ * The default order is now the sales ladder rather than `seq`: best selling
+ * first, and everything unsold for a year beneath everything that has sold. A
+ * saree that sold out yesterday and one that has not moved since 2024 both read
+ * `qty_available: 0`, and until Phase 4 the grid could not tell them apart.
  */
 export default async function ReorderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vendor?: string; c?: string; q?: string; sort?: string; page?: string }>
+  searchParams: Promise<{
+    vendor?: string
+    c?: string
+    q?: string
+    sort?: string
+    w?: string
+    page?: string
+  }>
 }) {
   const params = await searchParams
   await requireProcurement()
@@ -39,6 +51,7 @@ export default async function ReorderPage({
   const collection = clean(params.c)
   const search = clean(params.q)
   const sort = resolveSort(params.sort)
+  const window = resolveWindow(params.w)
   const page = Math.max(1, Number(params.page) || 1)
 
   // Weavers, ordered by how much of theirs is waiting to be reordered. Pooja
@@ -83,6 +96,7 @@ export default async function ReorderPage({
         collection={collection}
         q={search}
         sort={sort}
+        window={window}
       />
 
       {!chosen ? (
@@ -98,6 +112,7 @@ export default async function ReorderPage({
           collection={collection}
           search={search}
           sort={sort}
+          window={window}
           page={page}
         />
       )}
@@ -116,6 +131,7 @@ async function Grid({
   collection,
   search,
   sort,
+  window,
   page,
 }: {
   supabase: Supabase
@@ -124,25 +140,32 @@ async function Grid({
   collection: string
   search: string
   sort: ReturnType<typeof resolveSort>
+  window: ReturnType<typeof resolveWindow>
   page: number
 }) {
   let query = supabase
     .from('products')
-    // No description: nothing renders it any more, and on a 48-tile page the
+    // No description: nothing renders it any more, and on a 120-tile page the
     // Shopify marketing copy is by far the largest thing on the wire.
-    .select('sku, title, image_url, price, qty_available, stock_synced_at', {
-      count: 'exact',
-    })
+    .select(
+      `sku, title, image_url, image_urls, display_image_position, manual_image_url,
+       crop_json, crop_mode, price, qty_available, stock_synced_at,
+       units_30d, units_60d, units_90d, tier_30, tier_60, tier_90, sales_synced_at`,
+      { count: 'exact' },
+    )
     .eq('vendor_id', vendorId)
     // The pool: sold out, or down to the last piece. Note what is absent — no
     // filter on shopify_status. Shopify drafts a product the moment it sells
     // out, and those are the strongest reorder candidates there are.
     .in('qty_available', [0, 1])
+    // Designs Shopify has stopped returning cannot be reordered; the photograph
+    // and the price behind them are no longer maintained anywhere.
+    .eq('is_active', true)
 
   if (collection) query = query.eq('collection', collection)
   if (search) query = query.or(`sku.ilike.%${search}%,title.ilike.%${search}%`)
 
-  const { data, count } = await applySort(query, sort).range(
+  const { data, count } = await applySort(query, sort, window).range(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE - 1,
   )
@@ -167,6 +190,7 @@ async function Grid({
     if (collection) p.set('c', collection)
     if (search) p.set('q', search)
     p.set('sort', sort)
+    p.set('w', String(window))
     if (n > 1) p.set('page', String(n))
     return `/reorder?${p.toString()}`
   }
@@ -187,7 +211,7 @@ async function Grid({
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {designs.map((d) => (
           <li key={d.sku}>
-            <DesignTile design={d} vendorCode={vendorCode} />
+            <DesignTile design={d} vendorCode={vendorCode} window={window} />
           </li>
         ))}
       </ul>
