@@ -44,17 +44,57 @@ needs no Partner account and no OAuth flow, and its token does not expire.
 
 ---
 
-## 3. Install and take the token
+## 3. Install, and take the credentials
 
 **API credentials → Install app → Install.**
 
-Under **Admin API access token**, press **Reveal token once**. It starts
-`shpat_`, and *once* is literal — Shopify will not show it again.
+There are two kinds of credential on that screen, and which one you use changes
+what has to go in the environment.
+
+### The client-credentials grant — what this store uses
+
+Under **API key and secret key**, take both. The app exchanges them for an
+access token itself:
 
 ```bash
-SHOPIFY_SHOP_DOMAIN=nerige-story.myshopify.com
+SHOPIFY_SHOP_DOMAIN=nerigestory.myshopify.com
+SHOPIFY_API_KEY=...
+SHOPIFY_API_SECRET=shpss_...
+```
+
+You can check them from a terminal before deploying anything:
+
+```bash
+curl -s -X POST "https://nerigestory.myshopify.com/admin/oauth/access_token" \
+  -H "Content-Type: application/json" \
+  -d '{"client_id":"...","client_secret":"...","grant_type":"client_credentials"}'
+```
+
+**Read the `expires_in` in that response.** It is `86399` — twenty-four hours.
+
+> **Do not paste the token that call returns into `SHOPIFY_ADMIN_ACCESS_TOKEN`.**
+> It has the same `shpat_` prefix as a permanent one and is indistinguishable by
+> eye. A deployment configured that way syncs perfectly on the day it is set up
+> and then answers 401 to every request from the next day onward, every thirty
+> minutes, having last succeeded yesterday. The failure surfaces a day after the
+> person who set it up stopped watching, and reads as "the sync broke" rather
+> than "that token was never renewable".
+>
+> `src/lib/shopify/client.ts` mints the token from the key and secret, caches it
+> in memory, and re-mints it ten minutes before it lapses — the margin is wider
+> than the longest bulk operation, so a token cannot expire mid-sync.
+
+### The permanent token — the older path
+
+If the app instead offers **Admin API access token → Reveal token once**, that
+one does not expire. Set it and leave the key and secret unset:
+
+```bash
 SHOPIFY_ADMIN_ACCESS_TOKEN=shpat_...
 ```
+
+It takes precedence when both are present, so this is also the way back if the
+grant ever misbehaves.
 
 `SHOPIFY_SHOP_DOMAIN` is the `.myshopify.com` domain, not the customer-facing
 one. Find it in **Settings → Domains**, listed as the store's permanent domain.
@@ -145,8 +185,8 @@ sync report.
 
 | Symptom | Cause |
 | --- | --- |
-| "Shopify is not connected" | The two variables are unset in the environment the app is running in. Vercel needs them added *and* a redeploy. |
-| 401 from Shopify | Token wrong, or it was copied from a different store. |
+| "Shopify is not connected" | `SHOPIFY_SHOP_DOMAIN` is unset, or neither the key/secret pair nor a permanent token is set, in the environment the app is running in. A host needs them added *and* a redeploy. |
+| 401 from Shopify | Token wrong, or copied from a different store. **If it worked yesterday and 401s today, a 24-hour client-credentials token was pasted into `SHOPIFY_ADMIN_ACCESS_TOKEN`.** Clear that variable and set `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` instead. |
 | "A bulk operation is already running" | The cron and the button overlapped. Wait a few minutes; one is doing the work. |
 | Sync succeeds, sales all zero | `read_all_orders` was not granted. Add it, reinstall, re-run. |
 | Sync succeeds, 0 rows written | Every SKU was skipped. The run report names why — usually SKUs with no vendor prefix. |

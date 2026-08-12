@@ -61,6 +61,7 @@ export function Photo({ url, alt, crop, className }: PhotoProps): ReactNode {
         className="absolute max-w-none object-cover"
         style={cropStyle(rect)}
         loading="lazy"
+        decoding="async"
       />
     </div>
   )

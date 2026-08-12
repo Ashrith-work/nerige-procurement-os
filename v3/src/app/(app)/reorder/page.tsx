@@ -209,9 +209,16 @@ async function Grid({
 
       {/* Two columns on a phone, five where there is room. */}
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {designs.map((d) => (
+        {designs.map((d, i) => (
           <li key={d.sku}>
-            <DesignTile design={d} vendorCode={vendorCode} window={window} />
+            {/*
+             * The first six tiles fill the top of a phone screen, so they are
+             * the LCP candidate and must not be lazy — a lazy image is not even
+             * requested until layout says it is near the viewport, which delays
+             * exactly the photograph the page is judged on. Everything after
+             * them stays lazy: this page can carry 120 tiles.
+             */}
+            <DesignTile design={d} vendorCode={vendorCode} window={window} eager={i < 6} />
           </li>
         ))}
       </ul>

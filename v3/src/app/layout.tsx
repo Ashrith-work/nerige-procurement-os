@@ -41,6 +41,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale}>
+      <head>
+        {/*
+         * Every photograph in this application comes from the Shopify CDN, and
+         * the reorder grid asks for up to 120 of them at once.
+         *
+         * Without this, the browser cannot even begin the first image request
+         * until it has done a DNS lookup, a TCP handshake and a TLS negotiation
+         * against a host it has never spoken to — and it only discovers it needs
+         * to when it parses the first <img>. On a phone on Indian mobile data
+         * that sequence is routinely 300-500ms of doing nothing, paid once per
+         * page load, before a single photograph starts arriving.
+         *
+         * `preconnect` starts it during HTML parse instead, in parallel with
+         * everything else. `crossOrigin` is required: images are fetched
+         * anonymously, and a preconnect opened without it warms a connection the
+         * image requests then decline to reuse.
+         */}
+        <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.shopify.com" />
+      </head>
       <body className="min-h-dvh antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}

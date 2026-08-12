@@ -121,11 +121,11 @@ export async function syncShopifyProducts(
   opts: { onProgress?: (message: string) => void } = {},
 ): Promise<SyncResult> {
   const say = opts.onProgress ?? (() => {})
-  const config = shopifyConfig()
+  const config = await shopifyConfig()
 
   if (!config) {
     throw new ShopifyError(
-      'Shopify is not connected. Set SHOPIFY_SHOP_DOMAIN and SHOPIFY_ADMIN_ACCESS_TOKEN in .env.local — see v3/docs/shopify-setup.md.',
+      'Shopify is not connected. Set SHOPIFY_SHOP_DOMAIN, plus either SHOPIFY_API_KEY and SHOPIFY_API_SECRET or a permanent SHOPIFY_ADMIN_ACCESS_TOKEN — see v3/docs/shopify-setup.md.',
     )
   }
 

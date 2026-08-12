@@ -56,10 +56,13 @@ export function DesignTile({
   design,
   vendorCode,
   window,
+  eager = false,
 }: {
   design: Design
   vendorCode: string
   window: Window
+  /** Above the fold: fetch immediately and at high priority. See page.tsx. */
+  eager?: boolean
 }) {
   const { has, toggle } = useSelection()
   const [info, setInfo] = useState(false)
@@ -110,7 +113,12 @@ export function DesignTile({
               alt={design.title ?? design.sku}
               className="absolute max-w-none object-cover"
               style={cropStyle(image.crop)}
-              loading="lazy"
+              loading={eager ? 'eager' : 'lazy'}
+              fetchPriority={eager ? 'high' : 'auto'}
+              // Decode off the main thread. With up to 120 tiles scrolling past,
+              // synchronous decodes are what makes a fast connection still feel
+              // like a stuttering grid on a mid-range phone.
+              decoding="async"
             />
           ) : (
             <span className="absolute inset-0 flex items-center justify-center text-xs text-stone-400">

@@ -26,20 +26,144 @@ export interface ShopifyConfig {
   accessToken: string
 }
 
+function normaliseShop(shop: string): string {
+  return shop.replace(/^https?:\/\//, '').replace(/\/$/, '')
+}
+
+// -----------------------------------------------------------------------------
+// The access token
+// -----------------------------------------------------------------------------
+
+/**
+ * TWO WAYS TO HOLD A TOKEN, AND THEY EXPIRE DIFFERENTLY.
+ *
+ * The old way is a custom app installed from the Shopify admin, which reveals a
+ * `shpat_` token once and never expires it. Set `SHOPIFY_ADMIN_ACCESS_TOKEN` and
+ * nothing below runs.
+ *
+ * The new way is a client-credentials grant against
+ * `/admin/oauth/access_token` with the app's client ID and secret. It returns a
+ * token of exactly the same `shpat_` shape — and `expires_in: 86399`. Twenty-four
+ * hours.
+ *
+ * That difference is the whole reason this file changed. Pasting a
+ * client-credentials token into an environment variable produces a deployment
+ * that syncs perfectly for one day and then answers 401 to every request
+ * forever, at 30-minute intervals, having last succeeded yesterday. The failure
+ * arrives a day after the person who configured it stopped watching, and reads
+ * as "the sync broke" rather than "the token was never renewable".
+ *
+ * So the secret goes in the environment and the token is minted here, cached in
+ * module scope, and re-minted before it lapses.
+ */
+interface CachedToken {
+  accessToken: string
+  /** Epoch ms after which this token must not be used again. */
+  expiresAt: number
+}
+
+let cachedToken: CachedToken | null = null
+
+/**
+ * Re-mint this long before the stated expiry.
+ *
+ * A products bulk operation can legitimately run for minutes, and the poll loop
+ * keeps calling `currentBulkOperation` throughout. A token checked as valid at
+ * the start of a sync and expiring in its middle is the one case a naive
+ * `Date.now() < expiresAt` still gets wrong, so the margin is comfortably wider
+ * than the longest request this client makes.
+ */
+const REFRESH_MARGIN_MS = 10 * 60 * 1000
+
+/**
+ * One in-flight mint at a time.
+ *
+ * The scheduled sync runs products then sales back to back, and an admin can
+ * press Sync now while it does. Without this, a cold start with two concurrent
+ * callers mints two tokens and throws one away.
+ */
+let inFlight: Promise<CachedToken> | null = null
+
+async function mintToken(shop: string, clientId: string, clientSecret: string): Promise<CachedToken> {
+  const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'client_credentials',
+    }),
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    // The body carries Shopify's own reason — a rotated secret, a client ID
+    // belonging to a different shop — and none of that is guessable from 401.
+    throw new ShopifyError(
+      `Could not obtain a Shopify access token: ${response.status} ${response.statusText}`,
+      await response.text().catch(() => undefined),
+    )
+  }
+
+  const body = (await response.json()) as { access_token?: string; expires_in?: number }
+  if (!body.access_token) {
+    throw new ShopifyError('Shopify returned no access token', body)
+  }
+
+  // Default to an hour if Shopify ever stops sending expires_in. Treating a
+  // missing expiry as "never expires" is the one wrong guess available here.
+  const lifetimeMs = (body.expires_in ?? 3600) * 1000
+
+  return {
+    accessToken: body.access_token,
+    expiresAt: Date.now() + lifetimeMs,
+  }
+}
+
+async function resolveToken(shop: string, clientId: string, clientSecret: string): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt - REFRESH_MARGIN_MS) {
+    return cachedToken.accessToken
+  }
+
+  inFlight ??= mintToken(shop, clientId, clientSecret)
+    .then((token) => {
+      cachedToken = token
+      return token
+    })
+    .finally(() => {
+      inFlight = null
+    })
+
+  return (await inFlight).accessToken
+}
+
 /**
  * Configuration, or null when Shopify has not been connected yet.
  *
  * Null rather than throwing, because "not connected" is a legitimate state of
  * this application — the whole build runs against the seed CSVs until the
  * credentials arrive, and every screen has to work in the meantime.
+ *
+ * Async because the client-credentials path has to reach Shopify for a token.
+ * A missing credential still returns null without a network call, so an
+ * unconnected deployment costs nothing.
  */
-export function shopifyConfig(): ShopifyConfig | null {
-  const shop = process.env.SHOPIFY_SHOP_DOMAIN
-  const accessToken = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN
+export async function shopifyConfig(): Promise<ShopifyConfig | null> {
+  const rawShop = process.env.SHOPIFY_SHOP_DOMAIN
+  if (!rawShop) return null
 
-  if (!shop || !accessToken) return null
+  const shop = normaliseShop(rawShop)
 
-  return { shop: shop.replace(/^https?:\/\//, '').replace(/\/$/, ''), accessToken }
+  // A pasted permanent token wins, so an existing deployment keeps working
+  // unchanged and there is a way back if the grant ever misbehaves.
+  const staticToken = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN
+  if (staticToken) return { shop, accessToken: staticToken }
+
+  const clientId = process.env.SHOPIFY_API_KEY
+  const clientSecret = process.env.SHOPIFY_API_SECRET
+  if (!clientId || !clientSecret) return null
+
+  return { shop, accessToken: await resolveToken(shop, clientId, clientSecret) }
 }
 
 export class ShopifyError extends Error {
