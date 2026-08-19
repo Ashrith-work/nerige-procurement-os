@@ -10,6 +10,7 @@ import {
   unitsColumnFor,
 } from '@/lib/products/sell-through'
 import { SellThroughBadge } from '@/components/sell-through-badge'
+import { StockBadge } from '@/components/stock-badge'
 
 export const metadata = { title: 'Products · Nerige' }
 
@@ -186,6 +187,7 @@ export default async function AdminProductsPage({
                         style={cropStyle(image.crop)}
                       />
                     )}
+                    <StockBadge qty={row.qty_available} />
                     {image.isManual && (
                       <span className="absolute top-1 right-1 rounded bg-stone-900/80 px-1 text-[10px] text-white">
                         edited
