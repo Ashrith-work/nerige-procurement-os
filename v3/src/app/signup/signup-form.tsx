@@ -3,7 +3,8 @@
 import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { Button, Input, Textarea, Select, Field, Alert } from '@/components/ui/primitives'
-import { requestSignup, REQUESTABLE_ROLES, type SignupState } from './actions'
+import { requestSignup, type SignupState } from './actions'
+import { REQUESTABLE_ROLES } from './roles'
 
 const INITIAL: SignupState = { status: 'idle' }
 

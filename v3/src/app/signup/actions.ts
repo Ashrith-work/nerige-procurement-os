@@ -2,21 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { toAuthEmail } from '@/lib/auth/user-id'
+import { REQUESTABLE_ROLE_VALUES } from './roles'
 
 export interface SignupState {
   status: 'idle' | 'sent' | 'error'
   message?: string
 }
-
-/** The roles a stranger may ask for. `admin` is deliberately absent. */
-export const REQUESTABLE_ROLES = [
-  { value: 'vendor', label: 'Weaver — I make sarees for Nerige' },
-  { value: 'warehouse_manager', label: 'Warehouse — I add new products' },
-  { value: 'customer_support', label: 'Customer support — I look up orders' },
-  { value: 'procurement_head', label: 'Procurement' },
-] as const
-
-const ROLE_VALUES = new Set<string>(REQUESTABLE_ROLES.map((r) => r.value))
 
 /**
  * Asks for an account. Creates nothing.
@@ -46,7 +37,7 @@ export async function requestSignup(
 
   if (!fullName) return { status: 'error', message: 'Please give your name.' }
   if (!userId) return { status: 'error', message: 'Please choose a user ID.' }
-  if (!ROLE_VALUES.has(role)) return { status: 'error', message: 'Please choose what you do.' }
+  if (!REQUESTABLE_ROLE_VALUES.has(role)) return { status: 'error', message: 'Please choose what you do.' }
 
   // Checked here as well as in the database, because this is the message the
   // applicant can act on: `toAuthEmail` is the same function the sign-in box
