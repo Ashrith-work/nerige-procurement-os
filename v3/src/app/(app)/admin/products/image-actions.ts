@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { requireProcurement } from '@/lib/auth/session'
+import { requireAdmin } from '@/lib/auth/session'
 import type { CropRect } from '@/lib/products/image'
 
 export interface ImageState {
@@ -64,7 +64,11 @@ export async function saveProductImage(
   _prev: ImageState,
   formData: FormData,
 ): Promise<ImageState> {
-  await requireProcurement()
+  // Narrowed from requireProcurement(): a product photograph is something a
+  // customer can already see, and every correction to those is the owner's
+  // alone. This takes an existing capability away from procurement_head — a
+  // deliberate reduction, not an oversight.
+  await requireAdmin()
 
   const sku = String(formData.get('sku') ?? '').trim()
   if (!sku) return { status: 'error', message: 'No product given.' }

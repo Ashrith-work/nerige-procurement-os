@@ -128,6 +128,12 @@ async function main() {
     password: 'postgres',
     port: 54332,
     persistent: false,
+    // Same reason as tests/harness/db.ts: initdb otherwise inherits the host
+    // locale, which on a Windows machine is WIN1252, and the migrations contain
+    // UTF-8 characters with no WIN1252 equivalent. Without this, the preview
+    // dies on `20260804000200_identity.sql` — the one screen this script exists
+    // to let you look at without a Supabase project.
+    initdbFlags: ['-E', 'UTF8', '--locale=C'],
   })
 
   console.log('Booting Postgres')

@@ -6,10 +6,45 @@ import { getDictionary, resolveLocale, type Dictionary, type Locale } from '@/li
 import { readImpersonation } from '@/lib/auth/impersonation'
 
 /**
- * Two roles, and only two. Pooja issues orders; the weaver reads and accepts
- * hers. There is no third person in this product.
+ * Five roles. Must stay in step with the `app_role` enum — migration 020.
+ *
+ *   admin              The owner. Every capability, and the ONLY role permitted
+ *                      to correct anything a customer can already see:
+ *                      published product details, images, deletion.
+ *   procurement_head   Pooja. Reorder, orders, approval, sync. Unchanged.
+ *   warehouse_manager  Submits new sarees and tracks them. That is the whole of
+ *                      the job in this system.
+ *   customer_support   Reads. Looks something up to answer a question. Writes
+ *                      nothing, anywhere.
+ *   vendor             The weaver.
+ *
+ * This is a hand-written union rather than a generated type, so adding a role
+ * to the database without adding it here produces a silent `never` at every
+ * comparison rather than a compile error. Both lists change together.
  */
-export type AppRole = 'procurement_head' | 'vendor'
+export type AppRole =
+  | 'admin'
+  | 'procurement_head'
+  | 'warehouse_manager'
+  | 'customer_support'
+  | 'vendor'
+
+/** Everyone who works at Nerige. Read scope; never gate a write on this alone. */
+const STAFF_ROLES: readonly AppRole[] = [
+  'admin',
+  'procurement_head',
+  'warehouse_manager',
+  'customer_support',
+]
+
+/**
+ * Staff with operational authority. The application-side twin of
+ * `app.is_internal()` in migration 021, and it must not drift from it: the
+ * database grants these two roles orders, sales, sync, vendor credentials and
+ * configuration, and a guard here that disagreed would either lock someone out
+ * of a page whose data they can read, or show them a page full of nothing.
+ */
+const INTERNAL_ROLES: readonly AppRole[] = ['admin', 'procurement_head']
 
 export interface SessionUser {
   id: string
@@ -174,7 +209,12 @@ export async function requireVendor(): Promise<
 > {
   const user = await requireUser()
 
-  if (user.role === 'procurement_head') {
+  // Both internal roles may stand in a weaver's shoes. An earlier draft of the
+  // permission model made impersonation admin-only; that was wrong. It is not a
+  // correction to anything a customer sees — it is how Pooja answers "what is
+  // actually on her screen?" while she is on the phone to a weaver, and taking
+  // it away would break a workflow that already exists to no security benefit.
+  if (INTERNAL_ROLES.includes(user.role)) {
     const viewing = await readImpersonation()
     if (!viewing) redirect('/not-authorised')
 
@@ -200,9 +240,61 @@ export async function requireVendor(): Promise<
   return { ...user, vendorId: user.vendorId, readOnly: false }
 }
 
-/** Pooja. */
+/**
+ * Staff with operational authority: the owner, or Pooja.
+ *
+ * The name is kept despite now admitting two roles, because it is called from
+ * roughly forty routes and actions. Renaming it would be forty diffs of pure
+ * churn against a security boundary — the sort of change where the one file
+ * that gets missed is the one that matters.
+ *
+ * Admitting `admin` here is the whole mechanism by which the owner inherits the
+ * existing application. It is the exact counterpart of widening
+ * `app.is_internal()` in migration 021, made once in each layer rather than by
+ * writing `|| role === 'admin'` into forty files.
+ */
 export async function requireProcurement(): Promise<SessionUser> {
-  return requireRole('procurement_head')
+  return requireRole(...INTERNAL_ROLES)
+}
+
+/**
+ * The owner, and nobody else.
+ *
+ * Gate on this for anything a customer can already see — published product
+ * details, images, deletion — and for master data, configuration and user
+ * management. The database says the same thing through `app.is_admin()`; this
+ * exists so the refusal is a clean page rather than a working page full of
+ * nothing, which is what pure RLS enforcement looks like to a person.
+ */
+export async function requireAdmin(): Promise<SessionUser> {
+  return requireRole('admin')
+}
+
+/**
+ * Any authenticated Nerige employee.
+ *
+ * Read scope. The intake queue and a product lookup are deliberately visible to
+ * every staff role: a warehouse team has more than one person, and support
+ * answering "where is this saree" has to be able to look up any of them. Writes
+ * are gated per capability below, never on this.
+ */
+export async function requireStaff(): Promise<SessionUser> {
+  return requireRole(...STAFF_ROLES)
+}
+
+/** Who may create a new saree. Mirrors `app.can_submit_intake()`. */
+export async function requireIntakeSubmit(): Promise<SessionUser> {
+  return requireRole('admin', 'warehouse_manager')
+}
+
+/**
+ * Who may approve or reject at review. Mirrors `app.can_review_intake()`.
+ *
+ * Excludes `warehouse_manager` deliberately: the person who submits and shoots
+ * a saree is not the person who signs it off.
+ */
+export async function requireIntakeReview(): Promise<SessionUser> {
+  return requireRole(...INTERNAL_ROLES)
 }
 
 /** The strings this user reads, in the language on her profile. */
@@ -211,7 +303,32 @@ export async function getUserDictionary(): Promise<Dictionary> {
   return getDictionary(user?.locale)
 }
 
-/** Where each role belongs after signing in. */
+/**
+ * Where each role belongs after signing in.
+ *
+ * Every role lands on the screen it opens the application to use, not on a hub
+ * it has to navigate away from. A warehouse manager signs in to check the
+ * sarees he submitted this morning; that list is his home, and a dashboard in
+ * front of it is a tap he pays every time.
+ *
+ * `admin` lands on `/reorder` rather than an admin home because there is no
+ * `/admin` index page — only its children exist. When one is built this is the
+ * single line that changes.
+ *
+ * `/intake/queue` and `/lookup` arrive in later build steps. Nothing can reach
+ * them before then, because the roles that land there cannot be created until
+ * the screens exist to give them.
+ */
 export function homePathFor(role: AppRole): string {
-  return role === 'vendor' ? '/portal' : '/reorder'
+  switch (role) {
+    case 'vendor':
+      return '/portal'
+    case 'warehouse_manager':
+      return '/intake/queue'
+    case 'customer_support':
+      return '/lookup'
+    case 'admin':
+    case 'procurement_head':
+      return '/reorder'
+  }
 }

@@ -52,7 +52,23 @@ function has(name: string): boolean {
   return process.argv.includes(`--${name}`)
 }
 
-const ROLES = ['procurement_head', 'vendor'] as const
+/**
+ * Must stay in step with the `app_role` enum (migration 020) and with `AppRole`
+ * in src/lib/auth/session.ts. Three lists, one fact — a role missing from any
+ * of them fails in a different place: here it is refused at the command line,
+ * in the enum it is refused by the database, and in the union it becomes a
+ * silent `never` at every comparison.
+ *
+ * `--vendor-code` remains meaningful only for `vendor`; the three internal
+ * roles take `--locale` as their own locale_override, like procurement_head.
+ */
+const ROLES = [
+  'admin',
+  'procurement_head',
+  'warehouse_manager',
+  'customer_support',
+  'vendor',
+] as const
 
 /**
  * Supabase's own floor is six characters, which is too low for a credential

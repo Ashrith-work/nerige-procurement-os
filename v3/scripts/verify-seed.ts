@@ -27,6 +27,11 @@ async function main() {
     password: 'postgres',
     port,
     persistent: false,
+    // Same reason as tests/harness/db.ts: initdb otherwise inherits the host
+    // locale, which on a Windows machine is WIN1252, and the migrations contain
+    // UTF-8 characters with no WIN1252 equivalent. Without this, this script
+    // fails on a developer's laptop while passing on Linux CI.
+    initdbFlags: ['-E', 'UTF8', '--locale=C'],
   })
 
   console.log('Booting Postgres')

@@ -24,12 +24,40 @@ import { isSupabaseConfigured } from '@/lib/auth/guards'
 // back to and nothing public to allow through.
 const PUBLIC_PATHS = ['/login', '/auth/error', '/not-authorised']
 
+/**
+ * Endpoints that carry their OWN authentication and must never be session-gated.
+ *
+ * There is no browser and no cookie behind any of these. `/api/sync` proves it
+ * is the scheduler with CRON_SECRET and a timing-safe comparison; the webhook
+ * routes verify an HMAC over the raw body. Sending them to /login is not a
+ * security measure, it is an outage: the caller is Vercel Cron or Shopify or
+ * Meta, none of which follow a 307 to a sign-in page, and all of which record
+ * the redirect as a delivery failure.
+ *
+ * This was a live defect. The matcher below covers everything except static
+ * assets, so the scheduled sync had been redirecting to /login since the day it
+ * was written — a cron that reports success while having synced nothing.
+ *
+ * Adding a route here is a decision: it means that route is responsible for its
+ * own authentication, in full.
+ */
+const SELF_AUTHENTICATED_PATHS = ['/api/sync', '/api/whatsapp/webhook', '/api/shopify/webhook']
+
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }
 
+function isSelfAuthenticated(pathname: string): boolean {
+  return SELF_AUTHENTICATED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname: path } = request.nextUrl
+
+  // Before the Supabase check below, deliberately: these routes must answer
+  // even on a deployment whose database is not configured yet, because the
+  // caller needs a real status code rather than a redirect to a sign-in page.
+  if (isSelfAuthenticated(path)) return NextResponse.next({ request })
 
   // No Supabase project behind this deployment. Every route that touches data
   // would throw, so send them all to the sign-in screen, which says so.

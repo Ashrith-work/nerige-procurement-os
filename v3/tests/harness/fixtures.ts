@@ -107,6 +107,27 @@ async function makeVendor(
     [newDesign.rows[0].id, skus.slice(1)],
   )
 
+  // One saree still being created. `product_intakes` carries vendor_id, so
+  // discovery finds it at depth 0 — and for the same reason sku_sales_daily is
+  // seeded below, it has to hold rows or the cross-vendor assertion passes on
+  // an empty table and proves nothing.
+  //
+  // The property being proved here is stronger than for the other relations: no
+  // vendor policy exists on this table at all, so a weaver reads zero of these
+  // rows including her own. A saree that has not been published is not a thing
+  // she may see, and least of all one belonging to someone else.
+  await c.query(
+    `insert into product_intakes
+       (sku, intake_key, status, vendor_id,
+        collection_code, fabric_code, colour_code, product_type_code, cost_price)
+     values ($1, $2, 'READY_FOR_SHOOT', $3, 'VINT', 'SLK', 'RED', 'SAREES', 1200.00)`,
+    [
+      `${opts.code}-VINT-SLK-RED-INTAKE${opts.phoneSuffix}`,
+      `TEST-INTAKE-${opts.code}`,
+      vendorId,
+    ],
+  )
+
   // Sales for every design. Vendor-scoped only through `products.sku`, which is
   // exactly the indirect case discovery is built to find — and a table the
   // suite would otherwise pass over vacuously, because an empty table leaks
@@ -147,6 +168,21 @@ export async function seedWorld(c: Client): Promise<World> {
       name: 'Pooja',
       email: 'pooja@nerige.test',
     })
+
+    // The controlled vocabulary, before any vendor exists. `product_intakes`
+    // carries a trigger that refuses an attribute which is not a named, active
+    // row here (PRD 4, 5 — free text must never silently mint a SKU code), so
+    // an intake seeded before this would be rejected by the database.
+    //
+    // The codes match what makeVendor puts in its SKUs, because the fixture SKU
+    // and the fixture intake describe the same imaginary saree.
+    await c.query(
+      `insert into master_data (type, code, value, status) values
+         ('collection',   'VINT',   'Vintage', 'named'),
+         ('fabric',       'SLK',    'Silk',    'named'),
+         ('colour',       'RED',    'Red',     'named'),
+         ('product_type', 'SAREES', 'Saree',   'named')`,
+    )
 
     const a = await makeVendor(c, { code: 'AAA', name: 'Anantha Handlooms', phoneSuffix: '1' })
     const b = await makeVendor(c, { code: 'BBB', name: 'Bhavani Weavers', phoneSuffix: '2' })
