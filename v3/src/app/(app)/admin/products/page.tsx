@@ -3,6 +3,13 @@ import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { resolveProductImage, cropStyle, sizedImage } from '@/lib/products/image'
 import { PageHeader, Input, Select, Button, EmptyState } from '@/components/ui/primitives'
+import {
+  SELL_THROUGH_PERIODS,
+  resolvePeriod,
+  sellThrough,
+  unitsColumnFor,
+} from '@/lib/products/sell-through'
+import { SellThroughBadge } from '@/components/sell-through-badge'
 
 export const metadata = { title: 'Products · Nerige' }
 
@@ -13,6 +20,11 @@ interface Row {
   title: string | null
   vendor_id: string
   qty_available: number
+  units_30d: number | null
+  units_60d: number | null
+  units_90d: number | null
+  units_365d: number | null
+  sales_synced_at: string | null
   is_active: boolean
   image_urls: string[] | null
   image_url: string | null
@@ -37,7 +49,13 @@ interface Row {
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vendor?: string; q?: string; page?: string; inactive?: string }>
+  searchParams: Promise<{
+    vendor?: string
+    q?: string
+    page?: string
+    inactive?: string
+    period?: string
+  }>
 }) {
   const params = await searchParams
   await requireProcurement()
@@ -48,6 +66,8 @@ export default async function AdminProductsPage({
   const search = clean(params.q)
   const page = Math.max(1, Number(params.page) || 1)
   const showInactive = params.inactive === '1'
+  const period = resolvePeriod(params.period)
+  const unitsColumn = unitsColumnFor(period)
 
   const { data: vendorRows } = await supabase
     .from('vendors')
@@ -61,7 +81,7 @@ export default async function AdminProductsPage({
   let query = supabase
     .from('products')
     .select(
-      'sku, title, vendor_id, qty_available, is_active, image_urls, image_url, display_image_position, manual_image_url, crop_json, crop_mode',
+      'sku, title, vendor_id, qty_available, is_active, image_urls, image_url, display_image_position, manual_image_url, crop_json, crop_mode, units_30d, units_60d, units_90d, units_365d, sales_synced_at',
       { count: 'exact' },
     )
 
@@ -82,6 +102,7 @@ export default async function AdminProductsPage({
     if (vendorCode) p.set('vendor', vendorCode)
     if (search) p.set('q', search)
     if (showInactive) p.set('inactive', '1')
+    p.set('period', String(period))
     if (n > 1) p.set('page', String(n))
     const qs = p.toString()
     return qs ? `/admin/products?${qs}` : '/admin/products'
@@ -110,6 +131,18 @@ export default async function AdminProductsPage({
           placeholder="Code or name"
           className="w-auto min-w-52 flex-1"
         />
+        {/*
+          * The sell-through period. Submits with the rest of the filter form
+          * rather than navigating on change, so choosing a period and typing a
+          * search is one round trip instead of two.
+          */}
+        <Select name="period" defaultValue={String(period)} className="w-auto min-w-40">
+          {SELL_THROUGH_PERIODS.map((d) => (
+            <option key={d} value={d}>
+              Sell-through · {d} days
+            </option>
+          ))}
+        </Select>
         <label className="flex min-h-11 items-center gap-2 text-sm text-stone-600">
           <input type="checkbox" name="inactive" value="1" defaultChecked={showInactive} />
           Include inactive
@@ -160,6 +193,17 @@ export default async function AdminProductsPage({
                     )}
                   </div>
                   <p className="font-mono text-xs break-words text-stone-900">{row.sku}</p>
+                  {/*
+                    * Withheld until a sales sync has run at all. Without this a
+                    * fresh database shows 0% against every design, which reads
+                    * as "nothing sells" rather than "we have not counted yet".
+                    */}
+                  {row.sales_synced_at && (
+                    <SellThroughBadge
+                      value={sellThrough(row[unitsColumn], row.qty_available)}
+                      period={period}
+                    />
+                  )}
                   {!row.is_active && <p className="text-[11px] text-amber-700">Not in Shopify</p>}
                 </Link>
               </li>
