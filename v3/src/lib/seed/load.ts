@@ -198,13 +198,24 @@ const VENDOR_CODE = /^[A-Z0-9][A-Z0-9_-]{1,15}$/
 /**
  * Why a design is in the reorder pool, or null if it is not.
  *
- * The single definition, used by the loader and by /reorder. Verified against
- * the supplied pool file: 7,795 rows at zero, 1,108 at one, and nothing else —
- * negative quantities (oversold pieces) are deliberately outside the pool,
- * exactly as the export has them.
+ * The single definition, used by the loader and by /reorder, and it must stay
+ * in step with the partial indexes in migration 029 — a query broader than the
+ * index simply stops using it and falls back to scanning ten thousand rows.
+ *
+ * NEGATIVE IS SOLD OUT, NOT OUTSIDE THE POOL. This used to read `=== 0`,
+ * matching the v2 CSV export where negatives were excluded. Against live
+ * Shopify that was inverted exactly where it mattered: `inventoryQuantity` is
+ * `available`, which is `on_hand - committed`, so -118 means 118 customers have
+ * paid for a saree that does not exist. The designs in the deepest deficit were
+ * the only ones the reorder grid could not show.
+ *
+ * They collapse into `sold_out` rather than gaining a reason of their own,
+ * because `order_lines.reorder_reason` is CHECKed against two values and a
+ * saree at -118 is sold out — emphatically. The quantity beside it already
+ * carries the rest.
  */
 export function reorderReason(qtyAvailable: number): 'sold_out' | 'last_piece' | null {
-  if (qtyAvailable === 0) return 'sold_out'
+  if (qtyAvailable <= 0) return 'sold_out'
   if (qtyAvailable === 1) return 'last_piece'
   return null
 }
@@ -501,8 +512,8 @@ export async function loadSeed(db: Queryable, opts: LoadOptions): Promise<LoadRe
     loaded: {
       vendors: await scalar('select count(*) from vendors'),
       products: await scalar('select count(*) from products'),
-      reorderPool: await scalar('select count(*) from products where qty_available in (0, 1)'),
-      soldOut: await scalar('select count(*) from products where qty_available = 0'),
+      reorderPool: await scalar('select count(*) from products where qty_available <= 1'),
+      soldOut: await scalar('select count(*) from products where qty_available <= 0'),
       lastPiece: await scalar('select count(*) from products where qty_available = 1'),
       collections: await scalar('select count(distinct collection) from products'),
     },

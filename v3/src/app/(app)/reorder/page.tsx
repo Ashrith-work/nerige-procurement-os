@@ -157,7 +157,11 @@ async function Grid({
     // The pool: sold out, or down to the last piece. Note what is absent — no
     // filter on shopify_status. Shopify drafts a product the moment it sells
     // out, and those are the strongest reorder candidates there are.
-    .in('qty_available', [0, 1])
+    // `<= 1`, matching the partial indexes in migration 029. An oversold
+    // design — negative available, meaning pieces are owed that do not exist —
+    // is the strongest reorder candidate there is, and `in (0, 1)` was the one
+    // predicate that could not see it.
+    .lte('qty_available', 1)
     // Designs Shopify has stopped returning cannot be reordered; the photograph
     // and the price behind them are no longer maintained anywhere.
     .eq('is_active', true)

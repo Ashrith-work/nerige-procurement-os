@@ -61,7 +61,7 @@ export async function seedDemoOrder(
        from products
       where vendor_id = $1
         and collection = $2
-        and qty_available in (0, 1)
+        and qty_available <= 1
         and image_url is not null
       order by seq desc
       limit $3`,
@@ -150,7 +150,7 @@ async function busiestCollection(db: Queryable, vendorId: string): Promise<strin
     `select collection, count(*) as n
        from products
       where vendor_id = $1
-        and qty_available in (0, 1)
+        and qty_available <= 1
         and image_url is not null
         and collection is not null
       group by collection
