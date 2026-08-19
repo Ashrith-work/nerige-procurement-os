@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:isolation": "vitest run tests/isolation.test.ts",
+    "migrate": "tsx scripts/apply-migrations.ts",
     "seed": "tsx scripts/load-seed.ts",
     "seed:verify": "tsx scripts/verify-seed.ts",
     "setup": "tsx scripts/setup-supabase.ts",
