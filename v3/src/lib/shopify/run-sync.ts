@@ -48,6 +48,7 @@ export async function runSync(
       rowsChanged: number
       deactivated?: number
       skipped?: { reason: string; count: number }[]
+      unidentifiedVendor?: number
     } =
       kind === 'shopify_products'
         ? await syncShopifyProducts(db, { onProgress: say })
@@ -58,6 +59,13 @@ export async function runSync(
       : ''
 
     const deactivated = result.deactivated ? ` · ${result.deactivated} marked inactive` : ''
+
+    // Deliberately worded as a queue rather than a failure. These rows were
+    // written; what is missing is the weaver's name, and somebody has to supply
+    // it at /admin/products/unidentified.
+    const unidentified = result.unidentifiedVendor
+      ? ` · ${result.unidentifiedVendor} awaiting vendor identification`
+      : ''
 
     if (runId) {
       await db
@@ -76,7 +84,7 @@ export async function runSync(
       status: 'succeeded',
       rowsSeen: result.rowsSeen,
       rowsChanged: result.rowsChanged,
-      message: `${result.rowsSeen} seen, ${result.rowsChanged} written${deactivated}${notes}`,
+      message: `${result.rowsSeen} seen, ${result.rowsChanged} written${deactivated}${unidentified}${notes}`,
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

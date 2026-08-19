@@ -1,7 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { runBulkQuery, shopifyConfig, ShopifyError } from './client'
-import { vendorCodeFromSku } from '@/lib/seed/load'
+import { vendorCodeFromSku, derivableVendorCode, parseSkuSegments } from '@/lib/seed/load'
 import { resolveProductImage, DEFAULT_IMAGE_POSITION } from '@/lib/products/image'
 
 /**
@@ -70,11 +70,26 @@ export interface SyncResult {
   rowsChanged: number
   deactivated: number
   skipped: { reason: string; count: number }[]
+  /**
+   * Rows written whose SKU names no weaver, now sitting with the placeholder
+   * vendor awaiting identification. Reported separately from `skipped` because
+   * nothing was dropped — this is a queue length, not a loss.
+   */
+  unidentifiedVendor: number
 }
 
 interface ProductUpsert {
   sku: string
-  vendor_code: string
+  /** Null when the SKU names no weaver; the RPC parks those with the placeholder. */
+  vendor_code: string | null
+  /**
+   * Segments 2, 3 and 4 of the SKU. Null on any SKU that is not the five-part
+   * shape, in which case the RPC coalesces and leaves what is already stored —
+   * see the ON CONFLICT clause in migration 024.
+   */
+  collection: string | null
+  fabric: string | null
+  colour_code: string | null
   shopify_product_id: string
   shopify_variant_id: string | null
   title: string | null
@@ -104,9 +119,6 @@ function toPlainText(html: string | undefined): string | null {
     .trim()
   return text || null
 }
-
-/** Mirrors the CHECK constraint on vendors.code. */
-const VENDOR_CODE = /^[A-Z0-9][A-Z0-9_-]{1,15}$/
 
 /**
  * `DMG` marks damage, not a weaver — the same rule the CSV loader applies, and
@@ -158,6 +170,7 @@ export async function syncShopifyProducts(
   const skipped = new Map<string, number>()
   const skip = (reason: string) => skipped.set(reason, (skipped.get(reason) ?? 0) + 1)
   const seen = new Set<string>()
+  let unidentified = 0
 
   for (const [id, product] of products) {
     const variant = variants.get(id)
@@ -177,21 +190,35 @@ export async function syncShopifyProducts(
       continue
     }
 
-    const vendorCode = vendorCodeFromSku(sku)
-    if (DAMAGE_MARKERS.has(vendorCode)) {
+    // Damage is checked against the raw segment, not the derivable one: a bare
+    // `DMG` with no hyphen is still damaged stock and still not a weaver, and
+    // must be skipped rather than parked for identification.
+    if (DAMAGE_MARKERS.has(vendorCodeFromSku(sku))) {
       skip('damaged stock, not a weaver')
       continue
     }
-    if (!VENDOR_CODE.test(vendorCode)) {
-      skip('SKU prefix is not a usable vendor code')
-      continue
-    }
+
+    // Null means the SKU names no weaver — `VINTWB14700` and the 99 like it.
+    // The row is still written; the RPC parks it with the placeholder vendor so
+    // an admin can identify it. Counted, not skipped: skipping would drop a
+    // hundred sellable sarees out of the catalogue to record that we do not
+    // know who made them. See migration 026.
+    const vendorCode = derivableVendorCode(sku)
+    if (vendorCode === null) unidentified += 1
 
     seen.add(sku)
+
+    const segments = parseSkuSegments(sku)
 
     rows.push({
       sku,
       vendor_code: vendorCode,
+      // Until now the sync read segment one and threw the rest away, which is
+      // why every synced-in product has a null collection and is invisible to
+      // /reorder's vendor-then-collection path.
+      collection: segments.collection,
+      fabric: segments.fabric,
+      colour_code: segments.colour,
       shopify_product_id: id,
       shopify_variant_id: variant?.id ?? null,
       title: product.title?.trim() || null,
@@ -215,11 +242,17 @@ export async function syncShopifyProducts(
   const changed = await writeProducts(db, rows, syncedAt)
   const deactivated = await deactivateMissing(db, syncedAt)
 
+  // Once, at the end — never per chunk. design_count is recomputed from the
+  // catalogue rather than accumulated, so running it per chunk would be both
+  // wasteful and, on a second sync, wrong.
+  await refreshMasterDataStats(db)
+
   return {
     rowsSeen: rows.length,
     rowsChanged: changed,
     deactivated,
     skipped: [...skipped].map(([reason, count]) => ({ reason, count })),
+    unidentifiedVendor: unidentified,
   }
 }
 
@@ -277,4 +310,20 @@ async function deactivateMissing(db: SupabaseClient, syncedAt: string): Promise<
   const { data, error } = await db.rpc('sync_deactivate_missing', { p_synced_at: syncedAt })
   if (error) throw new ShopifyError(`Could not mark missing products inactive: ${error.message}`)
   return Number(data ?? 0)
+}
+
+/**
+ * Recomputes design counts and example products on the discovered vocabulary.
+ *
+ * Deliberately does NOT throw. The codes themselves are written by the upsert
+ * and are what /admin/master-data needs; these two columns only decide the sort
+ * order and the three sample products shown beside each one. Failing an
+ * otherwise successful ten-thousand-product sync over a cosmetic aggregate
+ * would be the wrong trade — the next sync recomputes it anyway.
+ */
+async function refreshMasterDataStats(db: SupabaseClient): Promise<void> {
+  const { error } = await db.rpc('refresh_master_data_stats')
+  if (error) {
+    console.warn(`[sync] master_data stats not refreshed: ${error.message}`)
+  }
 }

@@ -24,7 +24,13 @@ import { signOut } from './actions'
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
   const t = getDictionary(user.locale)
-  const impersonating = user.role === 'procurement_head' ? await readImpersonation() : null
+  // Both internal roles can impersonate, so both need the banner that says they
+  // are doing it. Showing the weaver's screen without it is how somebody edits
+  // the wrong vendor's order.
+  const impersonating =
+    user.role === 'procurement_head' || user.role === 'admin'
+      ? await readImpersonation()
+      : null
 
   if (user.role === 'vendor') {
     return (
@@ -107,6 +113,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           items={[
             { href: '/admin/profile', label: 'My profile' },
             { href: '/admin/vendors', label: 'My vendors' },
+            { href: '/admin/products', label: 'Products' },
+            // Admin only, matching the page's own requireAdmin(). A warehouse
+            // manager following this link would be redirected, so it is not
+            // offered to one.
+            ...(user.role === 'admin'
+              ? [{ href: '/admin/products/unidentified', label: 'To be identified' }]
+              : []),
             { href: '/admin/insights', label: 'Insights' },
             { href: '/admin/settings', label: 'Settings' },
           ]}

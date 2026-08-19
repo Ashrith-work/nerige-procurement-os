@@ -134,6 +134,64 @@ export function vendorCodeFromSku(sku: string): string {
   return sku.split('-')[0].trim().toUpperCase()
 }
 
+/**
+ * The vendor a SKU actually names, or null when it names none.
+ *
+ * `vendorCodeFromSku` above takes segment one unconditionally, which is only a
+ * PREFIX when there is something after it. Given `VINTWB14700` — no hyphen at
+ * all — segment one is the whole SKU, and the first full sync duly created a
+ * weaver named after a stock number, a hundred times over. See migration 026.
+ *
+ * Two conditions, both necessary:
+ *
+ *   * the SKU must contain a hyphen, so that segment one is a prefix and not
+ *     the entire string;
+ *   * that segment must satisfy the vendor code pattern, which is the same
+ *     CHECK the `vendors` table enforces — a 40-character segment is not a
+ *     weaver either, and finding that out here beats finding out on insert.
+ *
+ * Null is not a failure and callers must not skip the row: it means the product
+ * is real and its weaver is unknown, which is a thing to be assigned rather
+ * than a thing to be dropped.
+ */
+export function derivableVendorCode(sku: string): string | null {
+  if (!sku.includes('-')) return null
+
+  const code = vendorCodeFromSku(sku)
+  return VENDOR_CODE.test(code) ? code : null
+}
+
+/** The three attribute codes a SKU carries, or nulls when it does not. */
+export interface SkuSegments {
+  collection: string | null
+  fabric: string | null
+  colour: string | null
+}
+
+/**
+ * Reads `VENDOR-COLLECTION-FABRIC-COLOUR-SEQ`.
+ *
+ * Deliberately all-or-nothing: unless there are exactly five non-empty
+ * segments, every attribute comes back null and the caller keeps whatever it
+ * already had. The seed data contains `DMG - 157` — two segments, spaces around
+ * the hyphen, stored verbatim because a weaver copies that string onto a fabric
+ * label by hand. Guessing that its second segment is a collection would invent
+ * a vocabulary entry out of a stock number.
+ *
+ * Positional parsing is only safe because no segment may itself contain a
+ * hyphen; `vendors.code` permits one, but a code that used it would already
+ * have broken `vendorCodeFromSku` above, which has been splitting on the same
+ * character since the seed loader was written.
+ */
+export function parseSkuSegments(sku: string): SkuSegments {
+  const none: SkuSegments = { collection: null, fabric: null, colour: null }
+
+  const parts = sku.split('-').map((p) => p.trim().toUpperCase())
+  if (parts.length !== 5 || parts.some((p) => p === '')) return none
+
+  return { collection: parts[1], fabric: parts[2], colour: parts[3] }
+}
+
 /** Mirrors the CHECK constraint on vendors.code. */
 const VENDOR_CODE = /^[A-Z0-9][A-Z0-9_-]{1,15}$/
 

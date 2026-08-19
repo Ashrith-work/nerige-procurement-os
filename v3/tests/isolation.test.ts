@@ -83,6 +83,23 @@ describe('discovery', () => {
   })
 })
 
+/**
+ * Vendor-scoped for OWNERSHIP, but not vendor-readable at all.
+ *
+ * `product_intakes` carries vendor_id — a saree being created belongs to the
+ * weaver who will make it — so discovery finds it at depth 0. But no vendor
+ * policy exists on it, deliberately: a saree that has not been published is not
+ * a product yet. Its cost price, its unreviewed AI copy and its error state are
+ * Nerige's working notes, and a weaver reads none of it, including her own.
+ *
+ * This set is not an exemption. The assertion for these relations INVERTS —
+ * they must show a vendor exactly zero — so granting one of them a vendor
+ * policy fails this suite loudly instead of quietly widening what a weaver can
+ * see. Adding a name here without adding the policy fails too, because the row
+ * count would then match.
+ */
+const INTERNAL_ONLY = new Set(['product_intakes'])
+
 describe('cross-vendor isolation', () => {
   it("every discovered relation actually holds the other vendor's rows", async () => {
     // Without this, the assertion below would pass on an empty table and prove
@@ -114,12 +131,13 @@ describe('cross-vendor isolation', () => {
     expect(leaks).toEqual([])
   })
 
-  it('shows a vendor only her own rows, on every scoped relation', async () => {
+  it('shows a vendor only her own rows, on every vendor-facing relation', async () => {
     // The other half: isolation that hides everything is not isolation, it is
     // an outage. Every relation must return the vendor's own rows in full.
     const wrong: string[] = []
 
     for (const rel of scoped) {
+      if (INTERNAL_ONLY.has(rel.tableName)) continue
       const mine = await db.asAdmin((c) =>
         count(c, `select count(*)::text as n from ${rel.tableName} where ${rel.ownerPredicate}`, [
           w.vendorB.id,
@@ -132,6 +150,33 @@ describe('cross-vendor isolation', () => {
     }
 
     expect(wrong).toEqual([])
+  })
+
+  it('shows a vendor ZERO rows on an internal-only relation, including her own', async () => {
+    // The inverse of the test above, and the reason INTERNAL_ONLY is safe to
+    // maintain by hand: for these relations "sees her own rows" would be the
+    // failure, not the success. A weaver must not read a saree that is still
+    // being made — its cost price is Nerige's margin and its copy is a draft.
+    const leaks: string[] = []
+
+    for (const rel of scoped) {
+      if (!INTERNAL_ONLY.has(rel.tableName)) continue
+
+      // Rows exist and belong to her, or this proves nothing.
+      const mine = await db.asAdmin((c) =>
+        count(c, `select count(*)::text as n from ${rel.tableName} where ${rel.ownerPredicate}`, [
+          w.vendorB.id,
+        ]),
+      )
+      expect(mine, `${rel.tableName} has no rows for vendorB to be denied`).toBeGreaterThan(0)
+
+      const visible = await db.asUser(w.vendorB.ownerUser, (c) =>
+        count(c, `select count(*)::text as n from ${rel.tableName}`),
+      )
+      if (visible !== 0) leaks.push(`${rel.tableName}: vendor sees ${visible}, expected 0`)
+    }
+
+    expect(leaks).toEqual([])
   })
 
   it('shows a vendor exactly one vendor row — her own', async () => {
@@ -421,8 +466,35 @@ describe("procurement's write surface", () => {
     const orders = await db.asUser(w.pooja, (c) =>
       count(c, 'select count(*)::text as n from orders'),
     )
-    expect(vendors).toBe(2)
+    // Two weavers from the fixture, plus the placeholder that migration 026
+    // inserts into every database. Counted rather than filtered out, because
+    // procurement MUST be able to see it: it owns the products whose SKU names
+    // no weaver, and /admin/products/unidentified reads it by name.
+    expect(vendors).toBe(3)
     expect(orders).toBe(2)
+  })
+
+  it('keeps exactly one placeholder vendor, owning no weaver of its own', async () => {
+    // The holding pen is a schema invariant, not a fixture: the partial unique
+    // index means a second can never be created, and everything that lists
+    // weavers filters on this flag. A test that let it silently become two
+    // would let the identification queue split in half, each half looking done.
+    const placeholders = await db.asAdmin((c) =>
+      count(c, 'select count(*)::text as n from vendors where is_placeholder'),
+    )
+    expect(placeholders).toBe(1)
+
+    const clash = await db.asAdmin(async (c) => {
+      try {
+        await c.query(
+          `insert into vendors (code, display_name, is_placeholder) values ('SECOND', 'Second pen', true)`,
+        )
+        return 'accepted'
+      } catch {
+        return 'refused'
+      }
+    })
+    expect(clash).toBe('refused')
   })
 
   it('lets Pooja cancel an issued order', async () => {
