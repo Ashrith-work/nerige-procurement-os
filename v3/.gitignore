@@ -34,3 +34,6 @@ order-preview.html
 
 # scripts/provision-vendors.ts output — plaintext passwords, never committed
 *.local.csv
+
+# Local helper script, not part of the app build.
+deploy.mjs
