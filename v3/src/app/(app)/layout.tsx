@@ -118,7 +118,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             // manager following this link would be redirected, so it is not
             // offered to one.
             ...(user.role === 'admin'
-              ? [{ href: '/admin/products/unidentified', label: 'To be identified' }]
+              ? [
+                  { href: '/admin/products/unidentified', label: 'To be identified' },
+                  { href: '/admin/signups', label: 'Account requests' },
+                ]
               : []),
             { href: '/admin/insights', label: 'Insights' },
             { href: '/admin/settings', label: 'Settings' },

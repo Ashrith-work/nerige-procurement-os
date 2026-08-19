@@ -22,7 +22,13 @@ import { isSupabaseConfigured } from '@/lib/auth/guards'
 // /auth/callback is gone along with OAuth and magic links. Sign-in now
 // completes inside the Server Action, so there is no URL a provider redirects
 // back to and nothing public to allow through.
-const PUBLIC_PATHS = ['/login', '/auth/error', '/not-authorised']
+// `/signup` is public and creates nothing. It can reach exactly one function,
+// `request_signup`, which records an asking; an account exists only once an
+// admin approves it and application code mints the login. Migration 009 removed
+// OAuth and OTP precisely because both created an account as a side effect of
+// somebody merely arriving, and that property is preserved — arriving still
+// creates nothing. See migration 028.
+const PUBLIC_PATHS = ['/login', '/signup', '/auth/error', '/not-authorised']
 
 /**
  * Endpoints that carry their OWN authentication and must never be session-gated.

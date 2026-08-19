@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { headers } from 'next/headers'
 import { LoginForm } from './login-form'
 import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
@@ -40,6 +41,20 @@ export default async function LoginPage({
         </div>
 
         <p className="text-center text-xs text-stone-400">{t.login.byInvitation}</p>
+
+        {/*
+          * Deliberately quiet, and below the invitation notice rather than
+          * beside the button. Almost everyone who reaches this screen already
+          * has a login; the ones who do not are a handful of new weavers, and
+          * a prominent signup link would invite the rest to wonder whether
+          * they were supposed to use it.
+          */}
+        <p className="text-center text-xs text-stone-400">
+          No account yet?{' '}
+          <Link href="/signup" className="underline">
+            Request one
+          </Link>
+        </p>
       </div>
     </main>
   )
