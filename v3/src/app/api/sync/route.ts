@@ -4,7 +4,28 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { runSync, type SyncKind } from '@/lib/shopify/run-sync'
 
 /**
- * The scheduled sync. Called by Vercel Cron every thirty minutes.
+ * The scheduled sync. Called by Vercel Cron once a day at 01:00 UTC.
+ *
+ * THE SCHEDULE LIVES IN vercel.json AND ITS REASONING LIVES HERE, because that
+ * file is JSON and cannot carry a comment — not even as a property. Two
+ * separate mistakes in `crons[0]` kept this project from deploying at all
+ * between 2026-08-11 and 2026-08-19, six commits with no build:
+ *
+ *   1. `"schedule": "0,30 * * * *"` — Hobby permits one cron run per day and
+ *      REJECTS the deployment outright with `cron_jobs_limits_reached`, at
+ *      creation, before any build starts. It does not silently downgrade the
+ *      schedule, which is what a comment in that file used to claim.
+ *   2. `"comment": "..."` — `crons[0]` permits no additional properties, so
+ *      the very comment explaining the schedule failed the config validator:
+ *      "Invalid vercel.json - `crons[0]` should NOT have additional property".
+ *
+ * Both failures are silent from the outside. The git integration is fine, the
+ * branch is right, and nothing appears in the deployment list to say why.
+ *
+ * 01:00 UTC is 06:30 in Bengaluru: the catalogue is fresh before anyone opens
+ * it. Restore a half-hourly schedule only together with a Pro plan. Either way
+ * the Sync now button in Settings is the mechanism that matters, and every
+ * quantity on screen carries the age of the last SUCCESSFUL sync.
  *
  * This is the one route in the application that runs with no user session, so
  * it is also the one that has to prove it is the scheduler. Vercel signs cron

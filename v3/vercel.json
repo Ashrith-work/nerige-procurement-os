@@ -4,7 +4,6 @@
   "crons": [
     {
       "path": "/api/sync",
-      "comment": "Products then sales, once a day at 01:00 UTC — 06:30 in Bengaluru, so the catalogue is fresh before anyone opens it. Sales rows have a foreign key onto products, so a design added this morning has to exist before its orders can be counted; the route runs them in that order. DAILY IS NOT A PREFERENCE, IT IS THE PLAN LIMIT: Hobby permits one cron run per day and REJECTS a deployment whose schedule asks for more — 'cron_jobs_limits_reached', at creation, before any build starts. A previous version of this file said Hobby silently downgrades sub-daily schedules. It does not, and that mistake cost six commits which never deployed at all. Restore '0,30 * * * *' only together with a Pro plan. Either way the Sync now button in Settings is the real mechanism, and every quantity on screen carries the age of the last SUCCESSFUL sync.",
       "schedule": "0 1 * * *"
     }
   ]
