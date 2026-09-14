@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/primitives'
 import { OrderSections } from '@/components/order-sections'
 import { CancelForm } from './cancel-form'
 import { DeliveryPanel, type Delivery } from './delivery-panel'
+import { ShareCards, type ShareCardLine } from './share-cards'
 
 export const metadata = { title: 'Order · Nerige' }
 
@@ -85,6 +86,29 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const cancellable = order.status === 'issued' || order.status === 'accepted'
 
+  /**
+   * Both kinds of line get a card, in the order they appear on the weaver's own
+   * screen — restocks first, then the new designs. Sending them in screen order
+   * means the pack Pooja pastes into WhatsApp reads the same way as the order
+   * the weaver is looking at.
+   */
+  const shareCardLines: ShareCardLine[] = [
+    ...order.restock.map((l) => ({
+      id: l.id,
+      sku: l.sku,
+      brief: null,
+      quantity: l.quantity,
+      isNewDesign: false,
+    })),
+    ...order.newDesigns.map((l) => ({
+      id: l.id,
+      sku: null,
+      brief: l.brief,
+      quantity: l.quantity,
+      isNewDesign: true,
+    })),
+  ]
+
   return (
     // Wider than the weaver's screen. Hers is a phone; this one carries the
     // sending panel alongside the same cards.
@@ -143,6 +167,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
       {/* The weaver's own screen, unchanged. */}
       <OrderSections order={order} t={t} />
+
+      <ShareCards orderId={order.id} lines={shareCardLines} />
 
       <section className="border-t border-stone-200 pt-6">
         {cancellable ? (
