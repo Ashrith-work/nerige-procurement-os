@@ -23,15 +23,23 @@ const MAX_REFS = 6
 /**
  * The review step, and the last thing between a selection and three orders.
  *
- * Its whole job is the move: any tapped saree can stop being "make this again"
- * and become "make me more in this direction", which is a different line, a
- * different card on the weaver's phone, and a saree that comes back with no
- * code on it. That is one button here and a large consequence there, so the
- * screen shows both sections at once rather than hiding one behind a tab.
+ * Its job is the second ask: any tapped saree can ALSO become "make me more in
+ * this direction", which is a different line, a different card on the weaver's
+ * phone, and a saree that comes back with no code on it. That is one button
+ * here and a large consequence there, so the screen shows both sections at once
+ * rather than hiding one behind a tab.
  *
- * A design is either being reordered or being used as a reference, never both —
- * moving one takes it out of restock, and removing it from the references puts
- * it back.
+ * A DESIGN CAN BE BOTH, and this is the part that changed. It used to be either
+ * — "Make new like this" moved a saree out of restock, so asking for more in
+ * that direction silently cancelled the reorder of the saree that inspired it.
+ * That is almost never what is meant: a design selling well enough to inspire a
+ * variation is a design worth restocking too, and losing the restock line was
+ * invisible until the weaver's order arrived without it.
+ *
+ * Nothing in the schema ever required the exclusivity. `order_line_refs` is its
+ * own table keyed on (order_line_id, sku), and `order_lines` has no uniqueness
+ * across (order_id, sku) — so one saree may be a restock line and a reference on
+ * a new-design line in the same order. It was a rule of this screen alone.
  */
 export function Review() {
   const router = useRouter()
@@ -55,22 +63,29 @@ export function Review() {
   const [alsoWhatsApp, setAlsoWhatsApp] = useState(true)
 
   const bySku = useMemo(() => new Map(items.map((i) => [i.sku, i])), [items])
+
+  /**
+   * Which sarees are also referenced by a new-design line.
+   *
+   * No longer used to remove them from restock — only to say so on the row, so
+   * that seeing the same saree twice on one order reads as deliberate rather
+   * than as a bug.
+   */
   const usedAsRef = useMemo(() => new Set(drafts.flatMap((d) => d.refs)), [drafts])
 
   const vendors = useMemo(() => {
     const map = new Map<string, Selected[]>()
     for (const i of items) {
-      if (usedAsRef.has(i.sku)) continue
       map.set(i.vendorCode, [...(map.get(i.vendorCode) ?? []), i])
     }
     // A weaver with every line moved into a new design still needs her heading.
     for (const d of drafts) if (!map.has(d.vendorCode)) map.set(d.vendorCode, [])
     return [...map].sort(([a], [b]) => a.localeCompare(b))
-  }, [items, usedAsRef, drafts])
+  }, [items, drafts])
 
   const qty = (sku: string) => quantities[sku] ?? 1
 
-  const moveToNewDesign = (item: Selected) => {
+  const alsoMakeNewLikeThis = (item: Selected) => {
     setDrafts((prev) => [
       ...prev,
       {
@@ -95,7 +110,9 @@ export function Review() {
       prev.flatMap((d) => {
         if (d.id !== draftId) return [d]
         const refs = d.refs.filter((r) => r !== sku)
-        // The last reference gone means the line has nothing to point at.
+        // The last reference gone means the line has nothing to point at, so
+        // the draft goes with it. The saree itself stays in restock either way
+        // now — detaching a reference no longer restores anything.
         return refs.length === 0 ? [] : [{ ...d, refs }]
       }),
     )
@@ -105,9 +122,9 @@ export function Review() {
     setError(null)
 
     const result = await issueOrders({
-      restock: items
-        .filter((i) => !usedAsRef.has(i.sku))
-        .map((i) => ({ sku: i.sku, quantity: qty(i.sku) })),
+      // Every selected saree, including any also used as a reference. Being the
+      // inspiration for a new design is not a reason to stop reordering it.
+      restock: items.map((i) => ({ sku: i.sku, quantity: qty(i.sku) })),
       new_designs: drafts.map((d) => ({
         brief: d.brief.trim(),
         quantity: d.quantity,
@@ -212,6 +229,11 @@ export function Review() {
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-sm break-words">{item.sku}</p>
                         <p className="truncate text-xs text-stone-500">{item.title}</p>
+                        {/* Seeing one saree twice on an order should read as a
+                            decision, not a duplicate. */}
+                        {usedAsRef.has(item.sku) && (
+                          <p className="text-xs text-stone-400">also a reference below</p>
+                        )}
                       </div>
                       <input
                         type="number"
@@ -228,7 +250,7 @@ export function Review() {
                       />
                       <button
                         type="button"
-                        onClick={() => moveToNewDesign(item)}
+                        onClick={() => alsoMakeNewLikeThis(item)}
                         className="min-h-11 shrink-0 rounded-lg px-2 text-xs text-stone-600 underline underline-offset-2"
                       >
                         Make new
@@ -283,21 +305,32 @@ export function Review() {
                         </span>
                       ))}
 
-                      {d.refs.length < MAX_REFS && lines.length > 0 && (
-                        <select
-                          aria-label="Attach another reference"
-                          value=""
-                          onChange={(e) => e.target.value && attachRef(d.id, e.target.value)}
-                          className="min-h-11 rounded-lg border border-dashed border-stone-300 px-2 text-sm"
-                        >
-                          <option value="">+ reference</option>
-                          {lines.map((l) => (
-                            <option key={l.sku} value={l.sku}>
-                              {l.sku}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      {/*
+                        * Excludes what this draft already references. Restock
+                        * rows are no longer removed when referenced, so without
+                        * this the picker would offer a saree already attached —
+                        * and order_line_refs is UNIQUE (order_line_id, sku), so
+                        * the order would fail at the database rather than here.
+                        */}
+                      {(() => {
+                        const attachable = lines.filter((l) => !d.refs.includes(l.sku))
+                        if (d.refs.length >= MAX_REFS || attachable.length === 0) return null
+                        return (
+                          <select
+                            aria-label="Attach another reference"
+                            value=""
+                            onChange={(e) => e.target.value && attachRef(d.id, e.target.value)}
+                            className="min-h-11 rounded-lg border border-dashed border-stone-300 px-2 text-sm"
+                          >
+                            <option value="">+ reference</option>
+                            {attachable.map((l) => (
+                              <option key={l.sku} value={l.sku}>
+                                {l.sku}
+                              </option>
+                            ))}
+                          </select>
+                        )
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-2">
