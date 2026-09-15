@@ -107,6 +107,23 @@ async function makeVendor(
     [newDesign.rows[0].id, skus.slice(1)],
   )
 
+  // One parcel received against the order (migration 20260915000500). Both
+  // receipt tables reach vendor_id through foreign keys, so discovery finds
+  // them and needs rows on both sides or the cross-vendor assertion passes on
+  // an empty table. Inserted directly as owner: the order here is still
+  // `issued`, which record_order_receipt() would refuse — the shape of the rows
+  // is what isolation tests, not the receiving workflow (tests/inwarding.test.ts).
+  const receipt = await c.query<{ id: string }>(
+    `insert into order_receipts (order_id, received_by_name, note)
+     values ($1, 'Fixture', 'First parcel.') returning id`,
+    [orderId],
+  )
+  await c.query(
+    `insert into order_line_receipts (receipt_id, order_line_id, qty_received)
+     values ($1, $2, 2)`,
+    [receipt.rows[0].id, restock.rows[0].id],
+  )
+
   // One saree still being created. `product_intakes` carries vendor_id, so
   // discovery finds it at depth 0 — and for the same reason sku_sales_daily is
   // seeded below, it has to hold rows or the cross-vendor assertion passes on
