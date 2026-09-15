@@ -16,6 +16,7 @@ import { Client } from 'pg'
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { createServer } from 'node:net'
 
 // Vitest runs from the repo root, so cwd is stable and avoids the
 // __dirname/import.meta divergence between CJS and ESM transpilation.
@@ -36,6 +37,19 @@ export interface TestDb {
 
 let singleton: Promise<TestDb> | null = null
 
+/** Asks the OS for an unused TCP port on localhost. */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.unref()
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      server.close(() => (address && typeof address === 'object' ? resolve(address.port) : reject(new Error('no port'))))
+    })
+  })
+}
+
 /** Applies the Supabase shim and every migration, in filename order. */
 export async function applyMigrations(client: Client): Promise<void> {
   await client.query(await readFile(SHIM, 'utf8'))
@@ -54,10 +68,12 @@ export async function applyMigrations(client: Client): Promise<void> {
 
 async function boot(): Promise<TestDb> {
   const dataDir = await mkdtemp(join(tmpdir(), 'nerige-pg-'))
-  // Deterministic-but-unusual port keeps parallel local runs off 5432.
-  // Overridable, because an interrupted run on Windows can leave the socket
-  // listening under a process that no longer exists and cannot be killed.
-  const port = Number(process.env.TEST_PG_PORT ?? 54329)
+  // A fresh free port per boot, unless one is pinned. A fixed port worked while
+  // there was one database suite; with several, each file boots its own
+  // instance, and on Windows a stopped Postgres can leave its socket listening
+  // under a process that no longer exists and cannot be killed — so the second
+  // file failed to boot with "Unknown Error" on the port the first one used.
+  const port = process.env.TEST_PG_PORT ? Number(process.env.TEST_PG_PORT) : await freePort()
 
   const pg = new EmbeddedPostgres({
     databaseDir: dataDir,
