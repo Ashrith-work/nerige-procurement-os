@@ -5,6 +5,8 @@ import { LanguagePicker } from '@/components/language-picker'
 import { SidePanel } from '@/components/admin/side-panel'
 import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import { readImpersonation } from '@/lib/auth/impersonation'
+import { ViewAsBanner } from '@/components/dev/view-as-banner'
+import { navFor } from '@/lib/nav'
 import { signOut } from './actions'
 
 /**
@@ -28,13 +30,47 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // are doing it. Showing the weaver's screen without it is how somebody edits
   // the wrong vendor's order.
   const impersonating =
-    user.role === 'procurement_head' || user.role === 'admin'
+    (user.role === 'procurement_head' || user.role === 'admin') && !user.viewAs
       ? await readImpersonation()
       : null
+
+  // A developer looking as somebody else: the banner goes above whichever
+  // chrome that person gets, so the screen below is theirs, unaltered.
+  const viewAsBanner = user.viewAs ? (
+    <ViewAsBanner name={user.vendorCode ? `${user.fullName} · ${user.vendorCode}` : user.fullName} role={user.role} kind={user.viewAs.kind} />
+  ) : null
+
+  if (user.role === 'developer') {
+    return (
+      <div className="flex min-h-dvh flex-col bg-white text-stone-900">
+        <header className="no-print border-b border-stone-200 bg-stone-900 text-white">
+          <div className="flex w-full items-center gap-3 px-4 py-3">
+            <Link href="/dev" className="shrink-0 font-medium tracking-tight">
+              {t.login.brand} <span className="text-stone-400">· developer</span>
+            </Link>
+            <span className="flex-1" />
+            <span className="hidden text-sm text-stone-300 sm:block">{user.fullName}</span>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="min-h-11 rounded-lg px-3 text-sm text-stone-300 hover:bg-stone-800 hover:text-white"
+              >
+                {t.common.signOut}
+              </button>
+            </form>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      </div>
+    )
+  }
+
+  const nav = navFor(user.role)
 
   if (user.role === 'vendor') {
     return (
       <div className="flex min-h-dvh flex-col bg-white text-stone-900">
+        {viewAsBanner}
         <header className="no-print border-b border-stone-200">
           <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
             <Link href="/" className="shrink-0 font-medium tracking-tight">
@@ -78,6 +114,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Sits above everything, including the panel: whatever she does next on
           this session, it is happening as somebody else. */}
       {impersonating && <ImpersonationBanner vendor={impersonating} />}
+      {viewAsBanner}
 
       <header className="no-print border-b border-stone-200">
         <div className="flex w-full items-center gap-3 px-4 py-3">
@@ -87,8 +124,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           <nav className="flex-1 overflow-x-auto">
             <ul className="flex items-center gap-1">
-              <NavLink href="/reorder" label={t.nav.reorder} />
-              <NavLink href="/orders" label={t.nav.orders} />
+              {nav.top.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} />
+              ))}
             </ul>
           </nav>
 
@@ -107,26 +145,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        <SidePanel
-          heading={user.fullName}
-          subheading={user.email ?? ''}
-          items={[
-            { href: '/admin/profile', label: 'My profile' },
-            { href: '/admin/vendors', label: 'My vendors' },
-            { href: '/admin/products', label: 'Products' },
-            // Admin only, matching the page's own requireAdmin(). A warehouse
-            // manager following this link would be redirected, so it is not
-            // offered to one.
-            ...(user.role === 'admin'
-              ? [
-                  { href: '/admin/products/unidentified', label: 'To be identified' },
-                  { href: '/admin/signups', label: 'Account requests' },
-                ]
-              : []),
-            { href: '/admin/insights', label: 'Insights' },
-            { href: '/admin/settings', label: 'Settings' },
-          ]}
-        />
+        {nav.side.length > 0 && (
+          <SidePanel heading={user.fullName} subheading={user.email ?? ''} items={nav.side} />
+        )}
 
         <main className="w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
       </div>

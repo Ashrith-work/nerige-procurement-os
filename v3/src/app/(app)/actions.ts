@@ -7,8 +7,12 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth/session'
 import { isLocale } from '@/lib/i18n'
 import { LOCALE_COOKIE } from '@/i18n/request'
+import { VIEW_AS_COOKIE } from '@/lib/auth/view-as'
 
 export async function signOut() {
+  // A developer's view-as target must not survive into the next sign-in on
+  // this browser, which may be somebody else's.
+  ;(await cookies()).delete(VIEW_AS_COOKIE)
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')

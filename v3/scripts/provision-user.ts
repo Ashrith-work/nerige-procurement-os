@@ -68,6 +68,7 @@ const ROLES = [
   'warehouse_manager',
   'customer_support',
   'vendor',
+  'developer',
 ] as const
 
 /**

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getDictionary, resolveLocale, type Dictionary, type Locale } from '@/lib/i18n'
 import { readImpersonation } from '@/lib/auth/impersonation'
+import { headers } from 'next/headers'
+import { readViewAsTarget, type ViewAsContext } from '@/lib/auth/view-as'
 
 /**
  * Five roles. Must stay in step with the `app_role` enum — migration 020.
@@ -17,6 +19,8 @@ import { readImpersonation } from '@/lib/auth/impersonation'
  *   customer_support   Reads. Looks something up to answer a question. Writes
  *                      nothing, anywhere.
  *   vendor             The weaver.
+ *   developer          Reads everything, writes nothing, and can open any other
+ *                      role's screens as that person sees them. Migration 032.
  *
  * This is a hand-written union rather than a generated type, so adding a role
  * to the database without adding it here produces a silent `never` at every
@@ -28,6 +32,7 @@ export type AppRole =
   | 'warehouse_manager'
   | 'customer_support'
   | 'vendor'
+  | 'developer'
 
 /** Everyone who works at Nerige. Read scope; never gate a write on this alone. */
 const STAFF_ROLES: readonly AppRole[] = [
@@ -67,6 +72,13 @@ export interface SessionUser {
   vendorCode: string | null
   /** What the admin set for this weaver. Null for Pooja. */
   vendorDefaultLocale: Locale | null
+  /**
+   * Set when a developer is looking at the application as somebody else. Every
+   * other field on this object then describes THAT person, so each screen and
+   * guard renders exactly what they would see without knowing view-as exists.
+   * Null for everybody else, always.
+   */
+  viewAs: ViewAsContext | null
 }
 
 /**
@@ -78,7 +90,7 @@ export interface SessionUser {
  * within a single render pass, so the cost is one query per request, not one
  * per component.
  */
-export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+export const getRealSessionUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createClient()
 
   // getUser() revalidates the token against the auth server. getSession() reads
@@ -149,7 +161,31 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     vendorName,
     vendorCode,
     vendorDefaultLocale,
+    viewAs: null,
   }
+})
+
+/**
+ * The user every screen renders for.
+ *
+ * For a developer with a view-as target this is the TARGET, carrying `viewAs`
+ * so the chrome can say so; for everyone else it is simply the signed-in user.
+ * Guards below all read this, which is what makes view-as faithful: the warehouse
+ * manager's home is served by the warehouse manager's route, through the
+ * warehouse manager's role check, rather than by a developer-only copy of it
+ * that would drift.
+ *
+ * Reads still run under the developer's own JWT, and the developer's policies
+ * (migration 033) admit SELECT on everything — so screens that scope data to
+ * "mine" must filter on `user.id` / `user.vendorId` explicitly, exactly as the
+ * existing vendor impersonation already requires.
+ */
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  const real = await getRealSessionUser()
+  if (!real || real.role !== 'developer') return real
+
+  const target = await readViewAsTarget(real)
+  return target ?? real
 })
 
 /**
@@ -165,7 +201,18 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
  */
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser()
-  if (user) return user
+  if (user) {
+    // Every Server Action begins with a guard, so this is the one place that can
+    // refuse all of them at once while a developer is viewing as somebody. The
+    // database refuses the write regardless (a developer holds no write policy);
+    // this exists so the refusal is a sentence rather than an RLS error string.
+    if (user.viewAs && (await headers()).get('next-action')) {
+      throw new Error(
+        `Read-only: you are viewing as ${user.fullName}. Stop viewing before changing anything.`,
+      )
+    }
+    return user
+  }
 
   const supabase = await createClient()
   const {
@@ -214,7 +261,7 @@ export async function requireVendor(): Promise<
   // correction to anything a customer sees — it is how Pooja answers "what is
   // actually on her screen?" while she is on the phone to a weaver, and taking
   // it away would break a workflow that already exists to no security benefit.
-  if (INTERNAL_ROLES.includes(user.role)) {
+  if (INTERNAL_ROLES.includes(user.role) && !user.viewAs) {
     const viewing = await readImpersonation()
     if (!viewing) redirect('/not-authorised')
 
@@ -237,7 +284,7 @@ export async function requireVendor(): Promise<
   // it is here so the type is honest rather than asserted.
   if (!user.vendorId) redirect('/not-authorised')
 
-  return { ...user, vendorId: user.vendorId, readOnly: false }
+  return { ...user, vendorId: user.vendorId, readOnly: user.viewAs !== null }
 }
 
 /**
@@ -282,6 +329,29 @@ export async function requireStaff(): Promise<SessionUser> {
   return requireRole(...STAFF_ROLES)
 }
 
+/** The developer themself — never a view-as target. */
+export async function requireDeveloper(): Promise<SessionUser> {
+  const real = await getRealSessionUser()
+  if (!real) return requireUser()
+  if (real.role !== 'developer') redirect('/not-authorised')
+  return real
+}
+
+/** Who records the warehouse floor staff's day. Mirrors `app.can_record_staff()`. */
+export async function requireStaffRecorder(): Promise<SessionUser> {
+  return requireRole('admin', 'warehouse_manager')
+}
+
+/** Who reviews the floor staff's attendance sheet: the founders. */
+export async function requireStaffReview(): Promise<SessionUser> {
+  return requireRole('admin')
+}
+
+/** Who receives a weaver's delivery at the warehouse. Mirrors `app.can_receive_goods()`. */
+export async function requireReceiving(): Promise<SessionUser> {
+  return requireRole('admin', 'procurement_head', 'warehouse_manager')
+}
+
 /** Who may create a new saree. Mirrors `app.can_submit_intake()`. */
 export async function requireIntakeSubmit(): Promise<SessionUser> {
   return requireRole('admin', 'warehouse_manager')
@@ -306,29 +376,25 @@ export async function getUserDictionary(): Promise<Dictionary> {
 /**
  * Where each role belongs after signing in.
  *
- * Every role lands on the screen it opens the application to use, not on a hub
- * it has to navigate away from. A warehouse manager signs in to check the
- * sarees he submitted this morning; that list is his home, and a dashboard in
- * front of it is a tap he pays every time.
- *
- * `admin` lands on `/reorder` rather than an admin home because there is no
- * `/admin` index page — only its children exist. When one is built this is the
- * single line that changes.
- *
- * `/intake/queue` and `/lookup` arrive in later build steps. Nothing can reach
- * them before then, because the roles that land there cannot be created until
- * the screens exist to give them.
+ * Every role lands on the screen it opens the application to use. The two
+ * internal roles land on a dashboard now that one exists — it answers "what
+ * needs me today" across orders, intake review and the warehouse, with the
+ * reorder grid one click away. The warehouse manager lands on the warehouse
+ * home, whose first question is whether today's staff sheet is filled in.
+ * The developer lands on the switcher.
  */
 export function homePathFor(role: AppRole): string {
   switch (role) {
     case 'vendor':
       return '/portal'
     case 'warehouse_manager':
-      return '/intake/queue'
+      return '/warehouse'
     case 'customer_support':
       return '/lookup'
     case 'admin':
     case 'procurement_head':
-      return '/reorder'
+      return '/dashboard'
+    case 'developer':
+      return '/dev'
   }
 }

@@ -56,7 +56,11 @@ export const readImpersonation = cache(async (): Promise<ImpersonatedVendor | nu
     .is('deleted_at', null)
     .maybeSingle()
 
-  if (me?.role !== 'procurement_head') return null
+  // Both internal roles. This read `!== 'procurement_head'` alone, which quietly
+  // contradicted requireVendor(): an admin pressing "view as" got the cookie
+  // set, the log row written, and then /not-authorised, because this returned
+  // null for her.
+  if (me?.role !== 'procurement_head' && me?.role !== 'admin') return null
 
   const { data: vendor } = await supabase
     .from('vendors')

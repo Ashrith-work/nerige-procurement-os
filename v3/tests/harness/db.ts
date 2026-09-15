@@ -55,7 +55,9 @@ export async function applyMigrations(client: Client): Promise<void> {
 async function boot(): Promise<TestDb> {
   const dataDir = await mkdtemp(join(tmpdir(), 'nerige-pg-'))
   // Deterministic-but-unusual port keeps parallel local runs off 5432.
-  const port = 54329
+  // Overridable, because an interrupted run on Windows can leave the socket
+  // listening under a process that no longer exists and cannot be killed.
+  const port = Number(process.env.TEST_PG_PORT ?? 54329)
 
   const pg = new EmbeddedPostgres({
     databaseDir: dataDir,
