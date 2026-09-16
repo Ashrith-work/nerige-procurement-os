@@ -21,6 +21,13 @@ export const metadata = { title: 'Cropping · Nerige' }
  * a screen somewhere every week. Cropping in that order means the first hour of
  * this work is worth more than the next ten.
  *
+ * SERVICE SKUS ARE EXCLUDED. Fall & Pico, Tassels, Pre-Draping and the
+ * Customized Blouse are the most-ordered lines in the store, so they head any
+ * list sorted by what sells — and they are not sarees. Their "photograph" is a
+ * line-art icon, no weaver makes them, and nobody reorders them. Cropping an
+ * icon is wasted work at the top of the queue, which is the part of a queue
+ * that actually gets done.
+ *
  * Admin only, like the full editor: a photograph is something a customer can
  * already see.
  */
@@ -64,7 +71,11 @@ export default async function CroppingPage({
   const chosen = vendors.find((v) => v.code === vendorCode)
 
   const base = () => {
-    let q = supabase.from('products').select('sku', { count: 'exact', head: true }).eq('is_active', true)
+    let q = supabase
+      .from('products')
+      .select('sku', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .or('product_type.is.null,product_type.neq.Service')
     if (chosen) q = q.eq('vendor_id', chosen.id)
     return q
   }
@@ -79,6 +90,7 @@ export default async function CroppingPage({
           'sku, title, image_urls, image_url, display_image_position, manual_image_url, crop_json, crop_mode, units_90d, vendors(code)',
         )
         .eq('is_active', true)
+        .or('product_type.is.null,product_type.neq.Service')
       if (chosen) q = q.eq('vendor_id', chosen.id)
       if (!includeCropped) q = q.is('crop_json', null)
       // Nulls last: a design with no sales figure yet is not evidence of a
