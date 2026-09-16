@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/primitives'
 import { DashboardSection, SectionError, Tile, TileGrid, settle, toneWhen } from '@/components/dashboard/tile'
 import { loadIntakeCounts } from '@/lib/intake/summary'
 import { loadInwardCounts } from '@/lib/inwarding/summary'
-import { loadPeriodSummary, loadTodaySheetStatus } from '@/lib/performance/summary'
+import { loadPeriodSummary, loadRoster, loadTodaySheetStatus } from '@/lib/performance/summary'
 import { startOfWeek, todayInWarehouse } from '@/lib/performance/period'
 import { formatPercent } from '@/lib/performance/calc'
 
@@ -148,7 +148,13 @@ export default async function DashboardPage() {
               <Tile
                 href="/admin/performance"
                 label="Today's staff sheet"
-                value={sheet.value.expected === 0 ? 'Day off' : `${sheet.value.recorded} of ${sheet.value.expected}`}
+                value={
+                  sheet.value.expected === 0
+                    ? week.value.rosterSize === 0
+                      ? 'No staff yet'
+                      : 'Day off'
+                    : `${sheet.value.recorded} of ${sheet.value.expected}`
+                }
                 hint={sheet.value.missing.length > 0 ? `Not yet: ${sheet.value.missing.map((m) => m.name).join(', ')}` : undefined}
                 tone={sheet.value.state === 'complete' ? 'good' : sheet.value.state === 'not_expected' ? 'neutral' : 'waiting'}
               />
@@ -265,7 +271,13 @@ async function loadLastSync(supabase: SupabaseClient): Promise<string | null> {
 /** This week so far, Monday to today, reduced to the four numbers the tiles show. */
 async function loadWeek(supabase: SupabaseClient) {
   const today = todayInWarehouse()
-  const summary = await loadPeriodSummary(supabase, { from: startOfWeek(today), to: today })
+  // The roster itself, not summary.people: buildPeriodSummary drops anyone with
+  // no expected days and no records, so an empty week would otherwise read as an
+  // empty roster and the tile would say "no staff yet" about six people.
+  const [summary, roster] = await Promise.all([
+    loadPeriodSummary(supabase, { from: startOfWeek(today), to: today }),
+    loadRoster(supabase),
+  ])
 
   // The team's figure is total target-days of work over total days present,
   // counting only people with targeted work — the same definition outputIndex()
@@ -280,6 +292,7 @@ async function loadWeek(supabase: SupabaseClient) {
   }
 
   return {
+    rosterSize: roster.length,
     expectedDates: summary.totals.expectedDates,
     completeDates: summary.totals.completeDates,
     flags: summary.totals.flags,

@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/primitives'
 import { DashboardSection, SectionError, Tile, TileGrid, settle, toneWhen } from '@/components/dashboard/tile'
-import { loadRecentFill, loadTodaySheetStatus } from '@/lib/performance/summary'
+import { loadRecentFill, loadRoster, loadTodaySheetStatus } from '@/lib/performance/summary'
 import { formatDay, weekdayInitial } from '@/lib/performance/period'
 import { loadIntakeCounts } from '@/lib/intake/summary'
 import { loadInwardCounts } from '@/lib/inwarding/summary'
@@ -29,12 +29,18 @@ export default async function WarehouseHomePage() {
   const supabase = await createClient()
   const mineOnly = user.role === 'warehouse_manager'
 
-  const [sheet, fill, intake, inward] = await Promise.all([
+  // The roster separately, because "nobody is expected today" has two causes
+  // and they need different sentences: a non-working day, or nobody on the
+  // roster at all. The second reads as "day off" without this, which is how a
+  // warehouse that has never added its staff is told everything is fine.
+  const [sheet, fill, intake, inward, roster] = await Promise.all([
     settle(() => loadTodaySheetStatus(supabase)),
     settle(() => loadRecentFill(supabase)),
     settle(() => loadIntakeCounts(supabase, mineOnly ? { submittedBy: user.id } : {})),
     settle(() => loadInwardCounts(supabase)),
+    settle(() => loadRoster(supabase)),
   ])
+  const rosterEmpty = roster.ok && roster.value.length === 0
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -74,12 +80,19 @@ export default async function WarehouseHomePage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm text-stone-600">Today&rsquo;s staff sheet</p>
               <p className="mt-1 text-2xl font-medium">
-                {sheet.value.state === 'not_expected'
-                  ? 'Not a working day'
+                {rosterEmpty
+                  ? 'No floor staff yet'
+                  : sheet.value.state === 'not_expected'
+                    ? 'Not a working day'
                   : sheet.value.state === 'complete'
                     ? `All ${sheet.value.expected} recorded`
                     : `${sheet.value.recorded} of ${sheet.value.expected} recorded`}
               </p>
+              {rosterEmpty && (
+                <p className="mt-1 text-sm text-stone-600">
+                  Add the six floor staff on the sheet before their first day can be recorded.
+                </p>
+              )}
               {sheet.value.missing.length > 0 && (
                 <p className="mt-1 text-sm text-stone-600">
                   Still to do: {sheet.value.missing.map((m) => m.name).join(', ')}
@@ -87,14 +100,14 @@ export default async function WarehouseHomePage() {
               )}
             </div>
             <span className="inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-4 text-sm font-medium text-white">
-              {sheet.value.state === 'complete' ? 'Open sheet' : 'Fill in today'}
+              {rosterEmpty ? 'Add the staff' : sheet.value.state === 'complete' ? 'Open sheet' : 'Fill in today'}
             </span>
           </Link>
         ) : (
           <SectionError message={sheet.error} />
         )}
 
-        {fill.ok && (
+        {fill.ok && !rosterEmpty && (
           <ol className="flex gap-2" aria-label="The last seven days">
             {fill.value.map((day) => (
               <li key={day.date} className="flex-1">
