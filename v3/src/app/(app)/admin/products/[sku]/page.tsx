@@ -1,12 +1,11 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { format } from 'date-fns'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, Card, Button, StatusBadge } from '@/components/ui/primitives'
+import { PageHeader, Card, LinkButton, StatusBadge } from '@/components/ui/primitives'
 import { ImageEditor, type EditableProduct } from '../image-editor'
 
-export const metadata = { title: 'Product · Nerige' }
+export const metadata = { title: 'One design · Nerige' }
 
 /**
  * One design, as Nerige holds it.
@@ -50,9 +49,9 @@ export default async function AdminProductPage({ params }: { params: Promise<{ s
         subtitle={product.sku}
         action={
           vendor && (
-            <Link href={`/admin/vendors/${encodeURIComponent(vendor.code)}`}>
-              <Button variant="secondary">{vendor.display_name}</Button>
-            </Link>
+            <LinkButton href={`/admin/vendors/${encodeURIComponent(vendor.code)}`}>
+              {vendor.display_name}
+            </LinkButton>
           )
         }
       />
@@ -66,12 +65,19 @@ export default async function AdminProductPage({ params }: { params: Promise<{ s
 
       <ImageEditor product={product as unknown as EditableProduct} />
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <Stat label="Sold, 30 days" value={product.units_30d ?? 0} />
-        <Stat label="60 days" value={product.units_60d ?? 0} />
-        <Stat label="90 days" value={product.units_90d ?? 0} />
-        <Stat label="A year" value={product.units_365d ?? 0} />
-      </div>
+      <section className="space-y-1">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Stat label="Sold, 30 days" value={product.units_30d ?? 0} />
+          <Stat label="60 days" value={product.units_60d ?? 0} />
+          <Stat label="90 days" value={product.units_90d ?? 0} />
+          <Stat label="A year" value={product.units_365d ?? 0} />
+        </div>
+        <p className="text-xs text-stone-600">
+          {product.stock_synced_at
+            ? `Counted from sales up to ${format(new Date(product.stock_synced_at), 'd MMM yyyy, HH:mm')}.`
+            : 'Sales have never been counted for this design — not the same as nothing having sold.'}
+        </p>
+      </section>
 
       <Card className="space-y-3">
         <h2 className="text-base font-medium text-stone-900">Details</h2>
@@ -97,7 +103,7 @@ export default async function AdminProductPage({ params }: { params: Promise<{ s
             }
           />
           <div className="flex gap-2">
-            <dt className="text-stone-500">Shopify</dt>
+            <dt className="text-stone-600">Shopify</dt>
             <dd>
               <StatusBadge
                 status={product.shopify_status === 'active' ? 'active' : 'archived'}
@@ -112,9 +118,9 @@ export default async function AdminProductPage({ params }: { params: Promise<{ s
         <Card className="space-y-2">
           <div>
             <h2 className="text-base font-medium text-stone-900">Description</h2>
-            <p className="text-sm text-stone-500">
-              Shopify&rsquo;s customer-facing copy. Kept here, deliberately absent from every
-              vendor card.
+            <p className="text-sm text-stone-600">
+              The words Shopify shows a customer. Kept here, and deliberately absent from every
+              card a weaver sees.
             </p>
           </div>
           <p className="text-sm leading-relaxed whitespace-pre-line text-stone-700">
@@ -129,7 +135,7 @@ export default async function AdminProductPage({ params }: { params: Promise<{ s
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-stone-200 px-3 py-2.5">
-      <p className="text-xs text-stone-500">{label}</p>
+      <p className="text-xs text-stone-600">{label}</p>
       <p className="text-lg font-medium text-stone-900 tabular-nums">
         {value.toLocaleString('en-IN')}
       </p>
@@ -140,7 +146,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 function Row({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex gap-2">
-      <dt className="text-stone-500">{label}</dt>
+      <dt className="text-stone-600">{label}</dt>
       <dd className="text-stone-900">{value ?? '—'}</dd>
     </div>
   )

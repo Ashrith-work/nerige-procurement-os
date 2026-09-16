@@ -26,7 +26,10 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageHeader title="Settings" subtitle="What the portal shows, and where it gets its data." />
+      <PageHeader
+        title="Settings"
+        subtitle="The tutorial films weavers see, the Shopify sync, and where else this connects."
+      />
 
       <TutorialEditor videos={(videos ?? []) as TutorialRow[]} />
 

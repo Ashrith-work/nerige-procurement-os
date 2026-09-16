@@ -43,17 +43,21 @@ export function SalesBadges({
       : t.badge.neverSold
 
   return (
-    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-stone-500">
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-stone-600">
       {units > 0 && (
         <>
           <span className="tabular-nums">{soldLabel}</span>
-          <span className="text-stone-300">·</span>
+          <span className="text-stone-300" aria-hidden>
+            ·
+          </span>
         </>
       )}
       <span className={TIER_TONES[tier]}>{t.badge[TIER_KEYS[tier]]}</span>
       {units === 0 && tier >= 3 && (
         <>
-          <span className="text-stone-300">·</span>
+          <span className="text-stone-300" aria-hidden>
+            ·
+          </span>
           <span>{t.badge.neverSold}</span>
         </>
       )}
@@ -70,7 +74,7 @@ export function SalesBadges({
  */
 const TIER_TONES: Record<Tier, string> = {
   1: 'text-emerald-700',
-  2: 'text-stone-500',
-  3: 'text-stone-500',
-  4: 'text-amber-700',
+  2: 'text-stone-600',
+  3: 'text-stone-600',
+  4: 'text-amber-800',
 }

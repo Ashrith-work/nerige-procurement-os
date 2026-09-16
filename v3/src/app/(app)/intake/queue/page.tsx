@@ -2,14 +2,14 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { requireStaff } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { EmptyState, PageHeader, Select, Input, Button, cn } from '@/components/ui/primitives'
+import { Alert, EmptyState, LinkButton, PageHeader, Select, Input, Button, cn } from '@/components/ui/primitives'
 import { loadIntakeCounts, type IntakeCounts } from '@/lib/intake/summary'
 import { INTAKE_STATUSES, isIntakeStatus, STAGE_LABELS, STAGE_STATUSES, STATUS_LABELS, type IntakeStage } from '@/lib/intake/status'
 import { canSubmitIntake } from '@/lib/intake/transitions'
 import { INTAKE_LIST_COLUMNS, loadIntakeContext, loadPeople, loadVocabulary, vocabLabel, type IntakeListRow } from '../_lib/data'
 import { IntakeStatusBadge } from '../_components/intake-status-badge'
 
-export const metadata = { title: 'Intake queue · Nerige' }
+export const metadata = { title: 'Sarees being added · Nerige' }
 
 const LIMIT = 200
 
@@ -95,35 +95,36 @@ export default async function IntakeQueuePage({
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <PageHeader
-        title="Intake queue"
-        subtitle={who === 'mine' ? 'Sarees you submitted.' : 'Every saree in intake.'}
+        title="Sarees being added"
+        subtitle={who === 'mine' ? 'The ones you sent in.' : 'Everything part-way through.'}
         action={
           submits && (
-            <Link
-              href="/intake/new"
-              className="inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800"
-            >
-              New saree
-            </Link>
+            <LinkButton href="/intake/new" variant="primary">
+              Add a saree
+            </LinkButton>
           )
         }
       />
 
       {submits && (
-        <div className="inline-flex rounded-lg border border-stone-300 p-0.5 text-sm">
+        <nav className="inline-flex rounded-lg border border-stone-300 p-0.5 text-sm" aria-label="Whose sarees">
           {(['mine', 'everyone'] as const).map((w) => (
             <Link
               key={w}
               href={href({ who: w })}
-              className={cn('flex min-h-10 items-center rounded-md px-4', who === w ? 'bg-stone-900 text-white' : 'text-stone-700')}
+              aria-current={who === w ? 'true' : undefined}
+              className={cn(
+                'flex min-h-11 items-center rounded-md px-4',
+                who === w ? 'bg-stone-900 font-medium text-white' : 'text-stone-700 hover:bg-stone-50',
+              )}
             >
               {w === 'mine' ? 'Mine' : 'Everyone'}
             </Link>
           ))}
-        </div>
+        </nav>
       )}
 
-      <nav className="flex flex-wrap gap-2" aria-label="Stages">
+      <nav className="flex flex-wrap gap-2" aria-label="Stage">
         <StageChip href={href({ stage: null, status: null })} active={!stage && !status} label="All" />
         {STAGES.map((s) => {
           const key = STAGE_COUNT_KEY[s]
@@ -142,10 +143,10 @@ export default async function IntakeQueuePage({
 
       <form method="get" action="/intake/queue" className="flex flex-wrap items-end gap-2">
         {submits && <input type="hidden" name="who" value={who} />}
-        <label className="text-xs text-stone-500">
-          Status
+        <label className="text-xs text-stone-600">
+          Stage
           <Select name="status" defaultValue={status ?? ''} className="mt-1 w-auto min-w-48">
-            <option value="">Any status</option>
+            <option value="">Any stage</option>
             {INTAKE_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABELS[s]}
@@ -153,8 +154,8 @@ export default async function IntakeQueuePage({
             ))}
           </Select>
         </label>
-        <label className="text-xs text-stone-500">
-          Code or SKU
+        <label className="text-xs text-stone-600">
+          Unique Code or SKU
           <Input name="q" defaultValue={q} placeholder="16001 or PGW-BRHM" className="mt-1 w-48" />
         </label>
         <Button type="submit" variant="secondary">
@@ -162,12 +163,32 @@ export default async function IntakeQueuePage({
         </Button>
       </form>
 
-      {error && <p className="text-sm text-red-700">Could not load the queue: {error.message}</p>}
+      {error && (
+        <Alert tone="error">
+          This list could not be loaded, so what you see below may be out of date. Reload the page;
+          if it keeps happening, tell a developer: {error.message}
+        </Alert>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState
-          title="Nothing here"
-          body={who === 'mine' ? 'You have no sarees matching this filter.' : 'No saree matches this filter.'}
+          title={q || status || stage ? 'Nothing matches this filter' : 'No saree is part-way through'}
+          body={
+            q || status || stage
+              ? 'Clear the filter to see everything that is part-way through.'
+              : who === 'mine'
+                ? 'Every saree you sent in has been dealt with. Add the next one when it comes off the shelf.'
+                : 'Nothing is waiting anywhere between the floor and approval.'
+          }
+          action={
+            q || status || stage ? (
+              <LinkButton href="/intake/queue">Clear the filter</LinkButton>
+            ) : submits ? (
+              <LinkButton href="/intake/new" variant="primary">
+                Add a saree
+              </LinkButton>
+            ) : undefined
+          }
         />
       ) : (
         <ul className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
@@ -193,7 +214,7 @@ export default async function IntakeQueuePage({
                 {r.status === 'REJECTED' && r.rejection_reason && (
                   <p className="mt-1 text-sm text-red-700">Rejected: {r.rejection_reason}</p>
                 )}
-                <p className="mt-1 text-xs text-stone-400">
+                <p className="mt-1 text-xs text-stone-600">
                   Updated {format(new Date(r.updated_at), 'd MMM, HH:mm')}
                   {r.submitted_by && people.get(r.submitted_by) ? ` · by ${people.get(r.submitted_by)}` : ''}
                 </p>
@@ -204,7 +225,7 @@ export default async function IntakeQueuePage({
       )}
 
       {(count ?? 0) > rows.length && (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-stone-600 tabular-nums">
           Showing the {rows.length} most recently updated of {count}. Narrow the filter to see the rest.
         </p>
       )}

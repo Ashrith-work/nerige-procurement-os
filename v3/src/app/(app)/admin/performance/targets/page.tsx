@@ -27,8 +27,11 @@ export default async function StaffTargetsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <Link href="/admin/performance" className="text-sm text-stone-500 hover:underline">
-        ← Staff performance
+      <Link
+        href="/admin/performance"
+        className="inline-flex min-h-11 items-center text-sm text-stone-600 hover:underline"
+      >
+        Staff performance
       </Link>
       <PageHeader
         title="Targets"

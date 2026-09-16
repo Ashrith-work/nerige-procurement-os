@@ -31,6 +31,7 @@ export function FilterBar({
   q,
   sort,
   window,
+  flow,
 }: {
   vendors: VendorOption[]
   collections: CollectionOption[]
@@ -39,6 +40,12 @@ export function FilterBar({
   q: string
   sort: SortKey
   window: Window
+  /**
+   * The flow running through this screen, if any. Rebuilding the URL from
+   * scratch on every change would otherwise drop `?flow=order` and the progress
+   * bar would vanish the first time somebody narrowed the grid mid-order.
+   */
+  flow?: string | null
 }) {
   const router = useRouter()
 
@@ -52,6 +59,7 @@ export function FilterBar({
     if (merged.q) p.set('q', merged.q)
     if (merged.sort) p.set('sort', merged.sort)
     if (merged.w) p.set('w', merged.w)
+    if (flow) p.set('flow', flow)
     router.push(`/reorder?${p.toString()}`)
   }
 

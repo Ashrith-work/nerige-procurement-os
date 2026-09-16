@@ -3,10 +3,12 @@ import { requireUser, type AppRole } from '@/lib/auth/session'
 import { getDictionary } from '@/lib/i18n'
 import { LanguagePicker } from '@/components/language-picker'
 import { SidePanel } from '@/components/admin/side-panel'
+import { NavLink } from '@/components/nav-link'
 import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import { readImpersonation } from '@/lib/auth/impersonation'
 import { ViewAsBanner } from '@/components/dev/view-as-banner'
-import { navFor } from '@/lib/nav'
+import { getWorkspaceContext } from '@/lib/workspaces.server'
+import { WorkspaceSwitcher } from '@/components/workspace-switcher'
 import { signOut } from './actions'
 
 /**
@@ -65,7 +67,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     )
   }
 
-  const nav = navFor(user.role)
+  // The workspace decides what is in front of this person; the role still
+  // decides what they may reach. See src/lib/workspaces.ts.
+  const { workspaces, active } = await getWorkspaceContext(user)
+  const switcherItems = workspaces.map((w) => ({
+    key: w.key,
+    name: w.name,
+    blurb: w.blurb,
+    home: w.sections[0]?.href ?? '/dashboard',
+    isActive: w.key === active?.key,
+  }))
 
   if (user.role === 'vendor') {
     return (
@@ -122,15 +133,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {t.login.brand}
           </Link>
 
-          <nav className="flex-1 overflow-x-auto">
+          {/* The workspace's own sections, in the order the job runs in. Four
+              or five destinations, not fourteen. */}
+          <nav className="flex-1 overflow-x-auto" aria-label={active?.name ?? 'Sections'}>
             <ul className="flex items-center gap-1">
-              {nav.top.map((item) => (
-                <NavLink key={item.href} href={item.href} label={item.label} />
+              {(active?.sections ?? []).slice(0, 5).map((item) => (
+                <NavLink key={item.key} href={item.href} label={item.label} />
               ))}
             </ul>
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
+            <WorkspaceSwitcher
+              workspaces={switcherItems}
+              active={switcherItems.find((w) => w.isActive) ?? null}
+            />
             <span className="hidden text-sm text-stone-500 sm:block">{user.fullName}</span>
             <form action={signOut}>
               <button
@@ -145,8 +162,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        {nav.side.length > 0 && (
-          <SidePanel heading={user.fullName} subheading={user.email ?? ''} items={nav.side} />
+        {/* Everything else this workspace holds. The header carries the first
+            five; the panel carries the rest, so neither is a wall. */}
+        {(active?.sections.length ?? 0) > 5 && (
+          <SidePanel
+            heading={active?.name ?? user.fullName}
+            subheading={user.fullName}
+            items={(active?.sections ?? []).slice(5).map((s) => ({ href: s.href, label: s.label }))}
+          />
         )}
 
         <main className="w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
@@ -155,17 +178,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   )
 }
 
-function NavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <li>
-      <Link
-        href={href}
-        className="block min-h-11 rounded-lg px-3 py-2.5 text-sm whitespace-nowrap text-stone-600 hover:bg-stone-100 hover:text-stone-900"
-      >
-        {label}
-      </Link>
-    </li>
-  )
-}
 
 export type { AppRole }

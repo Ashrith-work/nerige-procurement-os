@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { requireIntakeSubmit } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { Alert, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { Alert, EmptyState, LinkButton, PageHeader } from '@/components/ui/primitives'
 import { STAGE_STATUSES, type IntakeStatus } from '@/lib/intake/status'
 import {
   edgesFor,
@@ -87,11 +87,7 @@ export default async function ShootingPage() {
       <PageHeader
         title="Shooting"
         subtitle="Photograph each saree, count the photos, send it to review."
-        action={
-          <Link href="/intake/queue" className="text-sm text-stone-600 underline-offset-2 hover:underline">
-            Intake queue
-          </Link>
-        }
+        action={<LinkButton href="/intake/queue">Sarees being added</LinkButton>}
       />
 
       <Alert>
@@ -100,10 +96,23 @@ export default async function ShootingPage() {
         checks against.
       </Alert>
 
-      {error && <Alert tone="error">Could not load the board: {error.message}</Alert>}
+      {error && (
+        <Alert tone="error">
+          The board could not be loaded, so it may be showing nothing when sarees are waiting.
+          Reload the page; if it keeps happening, tell a developer: {error.message}
+        </Alert>
+      )}
 
       {rows.length === 0 && !error ? (
-        <EmptyState title="Nothing to shoot" body="New sarees appear here as soon as they are saved with a code." />
+        <EmptyState
+          title="Nothing waiting for the camera"
+          body="A saree appears here the moment it is saved with a Unique Code. Write the code on the fabric, add it, and it will be waiting when you pick up the camera."
+          action={
+            <LinkButton href="/intake/new" variant="primary">
+              Add a saree
+            </LinkButton>
+          }
+        />
       ) : (
         GROUPS.map((group) => {
           const items = rows.filter((r) => group.statuses.includes(r.status))
@@ -111,12 +120,14 @@ export default async function ShootingPage() {
             <section key={group.title} className="space-y-2">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="font-medium text-stone-900">
-                  {group.title} <span className="text-stone-400 tabular-nums">{items.length}</span>
+                  {group.title} <span className="text-stone-600 tabular-nums">{items.length}</span>
                 </h2>
               </div>
-              <p className="text-sm text-stone-500">{group.body}</p>
+              <p className="text-sm text-stone-600">{group.body}</p>
               {items.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-stone-200 px-4 py-3 text-sm text-stone-400">None.</p>
+                <p className="rounded-lg border border-dashed border-stone-300 px-4 py-3 text-sm text-stone-600">
+                  Nothing here.
+                </p>
               ) : (
                 <ul className="space-y-3">
                   {items.map((r) => (
@@ -165,7 +176,7 @@ function ShootCard({
         {vendorCode} · {vocabLabel(vocab, 'collection', row.collection_code)} · {vocabLabel(vocab, 'fabric', row.fabric_code)} ·{' '}
         {vocabLabel(vocab, 'colour', row.colour_code)}
       </p>
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-stone-600 tabular-nums">
         {row.image_count > 0 ? `${row.image_count} photos recorded · ` : ''}
         Here since {format(new Date(row.updated_at), 'd MMM, HH:mm')}
       </p>
@@ -182,7 +193,9 @@ function ShootCard({
         />
       ) : (
         row.status !== 'READY_FOR_REVIEW' &&
-        row.status !== 'REJECTED' && <p className="text-sm text-stone-500">In the automated pipeline — nothing to do here yet.</p>
+        row.status !== 'REJECTED' && (
+          <p className="text-sm text-stone-600">Nothing for you to do on this one yet.</p>
+        )
       )}
     </li>
   )

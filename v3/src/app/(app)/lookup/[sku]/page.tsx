@@ -10,7 +10,7 @@ import { StockLine } from '@/components/stock-line'
 import { resolveProductImage, type CropRect } from '@/lib/products/image'
 import { todayInIndia } from '@/lib/inwarding/summary'
 
-export const metadata = { title: 'Lookup · Nerige' }
+export const metadata = { title: 'One saree · Nerige' }
 
 /** The shape `public.lookup_product()` returns. No cost, by construction. */
 interface LookupDetail {
@@ -111,9 +111,9 @@ export default async function LookupDetailPage({ params }: { params: Promise<{ s
     <div className="max-w-3xl space-y-5">
       <Link
         href="/lookup"
-        className="inline-block min-h-11 py-2.5 text-sm text-stone-500 underline underline-offset-2"
+        className="inline-block min-h-11 py-2.5 text-sm text-stone-600 underline underline-offset-2"
       >
-        Back to search
+        Look something up
       </Link>
 
       <PageHeader title={p.title ?? p.sku} subtitle={`${p.vendor_name} · ${p.vendor_code}`} />
@@ -149,7 +149,9 @@ export default async function LookupDetailPage({ params }: { params: Promise<{ s
       <Card className="space-y-3">
         <h2 className="text-base font-medium text-stone-900">More on its way</h2>
         {open_orders.length === 0 ? (
-          <p className="text-sm text-stone-500">No reorder is open for this design. Nothing more is on its way.</p>
+          <p className="text-sm text-stone-600">
+            No order is open with a weaver for this design, so nothing more is on its way.
+          </p>
         ) : (
           <ul className="divide-y divide-stone-100 text-sm">
             {open_orders.map((o) => {
@@ -210,12 +212,15 @@ export default async function LookupDetailPage({ params }: { params: Promise<{ s
             )}
           </>
         ) : (
-          <p className="text-sm text-stone-500">Sales have not been synced yet.</p>
+          <p className="text-sm text-stone-600">
+            Sales have never been counted for this design, so there is nothing to show — not the
+            same as nothing having sold.
+          </p>
         )}
       </Card>
 
       <Card className="space-y-2">
-        <h2 className="text-base font-medium text-stone-900">Intake</h2>
+        <h2 className="text-base font-medium text-stone-900">How this saree was added</h2>
         {intake ? (
           <p className="text-sm text-stone-700">
             Unique Code <span className="font-mono">{intake.unique_code}</span> · {humanise(intake.status)} ·
@@ -223,8 +228,9 @@ export default async function LookupDetailPage({ params }: { params: Promise<{ s
             {date(intake.created_at)}
           </p>
         ) : (
-          <p className="text-sm text-stone-500">
-            No intake record. This design was catalogued before intake existed in this system.
+          <p className="text-sm text-stone-600">
+            Nothing recorded. This design was in the catalogue before the system started tracking
+            how sarees are added.
           </p>
         )}
       </Card>

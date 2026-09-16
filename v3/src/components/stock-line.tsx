@@ -40,8 +40,10 @@ export function StockLine({
   return (
     <p className="text-[15px] text-stone-900">
       <span className="font-medium tabular-nums">{quantity}</span>
-      <span className="text-stone-400"> · </span>
-      <span className="text-sm text-stone-500">{age}</span>
+      <span className="text-stone-400" aria-hidden>
+        {' · '}
+      </span>
+      <span className="text-sm text-stone-600">{age}</span>
     </p>
   )
 }

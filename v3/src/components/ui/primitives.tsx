@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 export { cn }
@@ -207,8 +208,104 @@ export function EmptyState({
   return (
     <div className="rounded-xl border border-dashed border-stone-300 px-6 py-12 text-center">
       <p className="font-medium text-stone-900">{title}</p>
-      <p className="mx-auto mt-1 max-w-md text-sm text-stone-500">{body}</p>
+      <p className="mx-auto mt-1 max-w-md text-sm text-stone-600">{body}</p>
       {action && <div className="mt-4 flex justify-center">{action}</div>}
+    </div>
+  )
+}
+
+/**
+ * A link that looks and sizes like a button.
+ *
+ * `<Link><Button/></Link>` nests an anchor round a button: two focus stops for
+ * one destination, and a control a screen reader announces twice. Anything that
+ * navigates should be one anchor, sized to the same 44px as a real button.
+ */
+export function LinkButton({
+  className,
+  variant = 'secondary',
+  href,
+  ...props
+}: Omit<ComponentProps<typeof Link>, 'className'> & {
+  className?: string
+  variant?: 'primary' | 'secondary' | 'ghost'
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium',
+        'transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+        variant === 'primary' && 'bg-stone-900 text-white hover:bg-stone-800 focus-visible:ring-stone-900',
+        variant === 'secondary' &&
+          'border border-stone-300 bg-white text-stone-900 hover:bg-stone-50 focus-visible:ring-stone-400',
+        variant === 'ghost' && 'text-stone-700 hover:bg-stone-100 focus-visible:ring-stone-400',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+/**
+ * Skeletons, for the gap between a click and a slow query coming back.
+ *
+ * A blank screen is indistinguishable from a broken one, and the queries behind
+ * the catalogue, the orders list and the sales figures are seconds, not
+ * milliseconds. These are deliberately calm: stone, no shimmer sweeping across
+ * the page, and `animate-pulse` which `prefers-reduced-motion` switches off in
+ * globals.css. They are decoration for the eye only, so they are hidden from
+ * assistive technology and the wait is announced once, in words.
+ */
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cn('animate-pulse rounded-md bg-stone-100', className)} />
+}
+
+/** The announcement that goes with any skeleton. One per screen. */
+export function LoadingAnnouncement({ label = 'Loading' }: { label?: string }) {
+  return (
+    <p role="status" aria-live="polite" className="sr-only">
+      {label}
+    </p>
+  )
+}
+
+/** A page's heading, while its query is still running. */
+export function SkeletonHeader() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-6 w-56" />
+      <Skeleton className="h-4 w-80 max-w-full" />
+    </div>
+  )
+}
+
+/** A stack of list rows. The default shape for anything that renders a list. */
+export function SkeletonRows({ rows = 6, className }: { rows?: number; className?: string }) {
+  return (
+    <div className={cn('divide-y divide-stone-100 rounded-xl border border-stone-200', className)}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-4">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** A grid of photograph tiles, for the catalogue screens. */
+export function SkeletonTiles({ tiles = 12 }: { tiles?: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+      {Array.from({ length: tiles }, (_, i) => (
+        <div key={i} className="space-y-1.5 rounded-lg border border-stone-200 p-2">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-3 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      ))}
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { Photo } from '@/components/design-card'
 import { StockLine } from '@/components/stock-line'
 import { resolveProductImage, type CropRect } from '@/lib/products/image'
 
-export const metadata = { title: 'Lookup · Nerige' }
+export const metadata = { title: 'Look something up · Nerige' }
 
 /** A row of `public.lookup_products()`. Named columns only — there is no cost. */
 interface LookupRow {
@@ -63,7 +63,10 @@ export default async function LookupPage({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageHeader title="Lookup" subtitle="Stock, sales and what is on its way, for any saree." />
+      <PageHeader
+        title="Look something up"
+        subtitle="Stock and orders for any saree, while you are on the phone."
+      />
 
       <form method="get" className="flex gap-2" role="search">
         <Input
@@ -71,7 +74,7 @@ export default async function LookupPage({
           type="search"
           defaultValue={q}
           placeholder="SKU, Unique Code or title"
-          aria-label="Search"
+          aria-label="SKU, Unique Code or title"
           autoComplete="off"
           autoFocus
         />
@@ -80,12 +83,19 @@ export default async function LookupPage({
 
       {error && (
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          {error}
+          The search did not run. Try it again; if it keeps failing, tell a developer: {error}
+        </p>
+      )}
+
+      {!q && !error && (
+        <p className="text-sm text-stone-600">
+          Type any part of a SKU, the Unique Code written on the label, or a few words of the name.
+          The weaver&rsquo;s code and the number at the end are usually enough.
         </p>
       )}
 
       {q && !error && rows.length === 0 && (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-stone-600">
           Nothing matches &ldquo;{q}&rdquo;. Try part of the SKU — the weaver&rsquo;s code and the
           number at the end are usually enough.
         </p>
@@ -116,10 +126,10 @@ export default async function LookupPage({
                       {r.sku}
                     </span>
                     {r.title && <span className="block text-sm text-stone-700">{r.title}</span>}
-                    <span className="block text-xs text-stone-500">
+                    <span className="block text-xs text-stone-600">
                       {r.vendor_name}
                       {(r.unique_code ?? r.seq) !== null && ` · Unique Code ${r.unique_code ?? r.seq}`}
-                      {!r.is_active && ' · no longer on Shopify'}
+                      {!r.is_active && ' · Shopify no longer lists this'}
                     </span>
                     <StockLine qty={r.qty_available} syncedAt={r.stock_synced_at} t={t} />
                   </span>

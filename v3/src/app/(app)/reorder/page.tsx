@@ -4,6 +4,8 @@ import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { applySort, resolveSort, resolveWindow } from '@/lib/reorder/sort'
 import { Button, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { FlowStepper } from '@/components/flow/stepper'
+import { runningFlow, withFlow } from '@/components/flow/flows'
 import { FilterBar, type VendorOption, type CollectionOption } from './filter-bar'
 import { DesignTile, type Design } from './design-tile'
 import { SelectionFooter } from './selection-footer'
@@ -40,6 +42,12 @@ export default async function ReorderPage({
     sort?: string
     w?: string
     page?: string
+    /**
+     * Set to `order` while the ordering flow is running, and by nothing else.
+     * It adds the progress bar and points the footer at the next step; with it
+     * absent this screen is exactly what it has always been.
+     */
+    flow?: string
   }>
 }) {
   const params = await searchParams
@@ -53,6 +61,7 @@ export default async function ReorderPage({
   const sort = resolveSort(params.sort)
   const window = resolveWindow(params.w)
   const page = Math.max(1, Number(params.page) || 1)
+  const flow = runningFlow(params.flow, 'order')
 
   // Weavers, ordered by how much of theirs is waiting to be reordered. Pooja
   // opens this to work through a backlog, so the biggest backlog goes first.
@@ -87,6 +96,18 @@ export default async function ReorderPage({
 
   return (
     <div className="space-y-5 pb-24">
+      {flow && (
+        <FlowStepper
+          flow="order"
+          current={2}
+          hrefs={{
+            weaver: '/flows/order',
+            quantities: withFlow('/reorder/review', 'order'),
+            sent: '/flows/order/sent',
+          }}
+        />
+      )}
+
       <PageHeader title="Reorder" subtitle="Tap a saree to have it made again." />
 
       <FilterBar
@@ -97,6 +118,7 @@ export default async function ReorderPage({
         q={search}
         sort={sort}
         window={window}
+        flow={flow?.key ?? null}
       />
 
       {!chosen ? (
@@ -114,10 +136,11 @@ export default async function ReorderPage({
           sort={sort}
           window={window}
           page={page}
+          flow={flow !== null}
         />
       )}
 
-      <SelectionFooter />
+      <SelectionFooter flow={flow !== null} />
     </div>
   )
 }
@@ -133,6 +156,7 @@ async function Grid({
   sort,
   window,
   page,
+  flow,
 }: {
   supabase: Supabase
   vendorId: string
@@ -142,6 +166,8 @@ async function Grid({
   sort: ReturnType<typeof resolveSort>
   window: ReturnType<typeof resolveWindow>
   page: number
+  /** True while the ordering flow is running, so paging stays inside it. */
+  flow: boolean
 }) {
   let query = supabase
     .from('products')
@@ -196,6 +222,7 @@ async function Grid({
     p.set('sort', sort)
     p.set('w', String(window))
     if (n > 1) p.set('page', String(n))
+    if (flow) p.set('flow', 'order')
     return `/reorder?${p.toString()}`
   }
 

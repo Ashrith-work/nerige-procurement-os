@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { format } from 'date-fns'
 import { requireIntakeReview } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { Alert, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { Alert, EmptyState, LinkButton, PageHeader } from '@/components/ui/primitives'
 import { formatRupees } from '@/lib/intake/pricing'
 import { parseStatusHistory } from '@/lib/intake/history'
 import { resolveProductImage, sizedImage } from '@/lib/products/image'
@@ -19,7 +19,7 @@ import {
 import { IntakeStatusBadge } from '../intake/_components/intake-status-badge'
 import { TransitionControls } from '../intake/_components/transition-controls'
 
-export const metadata = { title: 'Review · Nerige' }
+export const metadata = { title: 'Approve sarees · Nerige' }
 
 const DECIDED_LIMIT = 25
 
@@ -105,8 +105,12 @@ export default async function ReviewPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
-        title="Review"
-        subtitle={rows.length === 0 ? 'Nothing is waiting.' : `${rows.length} saree${rows.length === 1 ? '' : 's'} waiting for a decision.`}
+        title="Approve sarees"
+        subtitle={
+          rows.length === 0
+            ? 'Sign off or send back. Nothing is waiting.'
+            : `${rows.length} saree${rows.length === 1 ? '' : 's'} waiting on you. Sign off or send back.`
+        }
       />
 
       <Alert>
@@ -115,10 +119,19 @@ export default async function ReviewPage() {
         screen cannot show yet.
       </Alert>
 
-      {error && <Alert tone="error">Could not load the review queue: {error.message}</Alert>}
+      {error && (
+        <Alert tone="error">
+          The list of sarees waiting could not be loaded, so this screen may be showing none when
+          some are waiting. Reload the page; if it keeps happening, tell a developer: {error.message}
+        </Alert>
+      )}
 
       {rows.length === 0 ? (
-        <EmptyState title="Nothing to review" body="Sarees appear here when the warehouse sends them from the shooting board." />
+        <EmptyState
+          title="Nothing is waiting on you"
+          body="A saree reaches this screen when the warehouse has photographed it and sent it on. Until then there is nothing to sign off."
+          action={<LinkButton href="/intake/queue">Sarees being added</LinkButton>}
+        />
       ) : (
         <ul className="space-y-4">
           {rows.map((r) => {
@@ -132,7 +145,7 @@ export default async function ReviewPage() {
                     {image ? (
                       <Image src={image} alt={r.sku ?? ''} fill sizes="112px" className="object-cover" unoptimized />
                     ) : (
-                      <span className="px-2 text-center text-xs text-stone-400">Photos in Drive</span>
+                      <span className="px-2 text-center text-xs text-stone-600">Photos are in Drive</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
@@ -151,7 +164,7 @@ export default async function ReviewPage() {
                       Cost {formatRupees(r.cost_price)} · MRP {formatRupees(r.mrp)} · {r.image_count} photo
                       {r.image_count === 1 ? '' : 's'}
                     </p>
-                    <p className="text-xs text-stone-400">
+                    <p className="text-xs text-stone-600">
                       Submitted by {people.get(r.submitted_by ?? '') ?? '—'}
                       {sentBy ? ` · sent to review ${format(new Date(sentBy.at), 'd MMM, HH:mm')}` : ''}
                       {sentBy?.by ? ` by ${people.get(sentBy.by) ?? 'someone'}` : ''}

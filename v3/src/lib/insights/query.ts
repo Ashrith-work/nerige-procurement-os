@@ -55,6 +55,14 @@ export async function loadInsights(
     db.rpc('insights_daily', args(filters)),
   ])
 
+  // A failed RPC is raised, not reported as nothing sold.
+  //
+  // This used to fall through to zeros, which reads on screen as a real answer:
+  // "0 units sold" is a sentence about the business, and "we could not ask" is
+  // not. The screens above catch this and say which section could not load.
+  const failed = [summaryResult, breakdownResult, dailyResult].find((r) => r.error)
+  if (failed?.error) throw new Error(`Could not load the sales figures: ${failed.error.message}`)
+
   // A single-row set-returning function comes back as an array of one.
   const summary = (
     Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data

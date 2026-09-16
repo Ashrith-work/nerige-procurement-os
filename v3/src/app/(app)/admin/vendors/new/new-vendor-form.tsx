@@ -1,9 +1,8 @@
 'use client'
 
 import { useActionState } from 'react'
-import Link from 'next/link'
 import { LOCALES, LOCALE_NAMES } from '@/lib/i18n'
-import { Button, Card, Field, Input, Select, Alert } from '@/components/ui/primitives'
+import { Button, Card, Field, Input, LinkButton, Select, Alert } from '@/components/ui/primitives'
 import { CredentialCard } from '@/components/admin/credential-card'
 import { createVendor, type CredentialResult } from '../credential-actions'
 
@@ -29,12 +28,12 @@ export function NewVendorForm() {
       <div className="space-y-4">
         <CredentialCard credential={state.credential} />
         <div className="no-print flex gap-2">
-          <Link href={`/admin/vendors/${encodeURIComponent(state.credential.vendorCode)}`}>
-            <Button variant="secondary">Open this vendor</Button>
-          </Link>
-          <Link href="/admin/vendors/new">
-            <Button variant="ghost">Add another</Button>
-          </Link>
+          <LinkButton href={`/admin/vendors/${encodeURIComponent(state.credential.vendorCode)}`}>
+            Open this weaver
+          </LinkButton>
+          <LinkButton href="/admin/vendors/new" variant="ghost">
+            Add another weaver
+          </LinkButton>
         </div>
       </div>
     )
@@ -46,7 +45,7 @@ export function NewVendorForm() {
         {state.status === 'error' && <Alert tone="error">{state.message}</Alert>}
 
         <Field
-          label="Vendor code"
+          label="Weaver code"
           required
           hint="The SKU prefix, exactly as it appears in her codes — PGW in PGW-BRHM-SLK-CRM-5855. Her whole catalogue is found by this string."
         >
@@ -93,7 +92,7 @@ export function NewVendorForm() {
         </Field>
 
         <Button type="submit" disabled={pending}>
-          {pending ? 'Creating…' : 'Create vendor and login'}
+          {pending ? 'Creating…' : 'Create the weaver and her login'}
         </Button>
       </form>
     </Card>

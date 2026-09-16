@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireStaffReview } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { Card, EmptyState, PageHeader, cn } from '@/components/ui/primitives'
+import { Card, EmptyState, LinkButton, PageHeader, cn } from '@/components/ui/primitives'
 import { loadPeriodSummary } from '@/lib/performance/summary'
 import { formatDays, formatPercent, type PersonSummary } from '@/lib/performance/calc'
 import {
@@ -23,7 +23,7 @@ function currentPeriod(params: { preset?: string; from?: string; to?: string }) 
 
 /** Colour for a completion ratio. Deliberately coarse: these are rough counts. */
 function completionTone(ratio: number | null): string {
-  if (ratio === null) return 'text-stone-400'
+  if (ratio === null) return 'text-stone-500'
   if (ratio >= 0.9) return 'text-emerald-700'
   if (ratio >= 0.7) return 'text-amber-700'
   return 'text-red-700'
@@ -70,22 +70,16 @@ export default async function StaffPerformancePage({
       <PageHeader
         title="Staff performance"
         subtitle={`${formatLongDay(period.from)} – ${formatLongDay(period.to)}`}
-        action={
-          <Link
-            href="/admin/performance/targets"
-            className="inline-flex min-h-11 items-center rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-700 hover:bg-stone-50"
-          >
-            Targets
-          </Link>
-        }
+        action={<LinkButton href="/admin/performance/targets">Targets</LinkButton>}
       />
 
       <PeriodPicker basePath="/admin/performance" period={period} today={today} />
 
       {summary.people.length === 0 ? (
         <EmptyState
-          title="No floor staff in this period"
-          body="The warehouse manager adds people from the staff sheet. Once they are on the roster and their days are recorded, this review fills in."
+          title="Nobody was on the sheet in this period"
+          body="Floor staff are added on the staff sheet, and this review reads that sheet back. Add the people, record a few days, and the figures appear here."
+          action={<LinkButton href="/warehouse/staff">Open the staff sheet</LinkButton>}
         />
       ) : (
         <>
@@ -149,31 +143,50 @@ export default async function StaffPerformancePage({
             <h2 className="text-sm font-medium text-stone-700">By person</h2>
             <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
               <table className="w-full text-sm">
-                <thead className="bg-stone-50 text-left text-xs text-stone-500">
+                <thead className="bg-stone-50 text-left text-xs text-stone-600">
                   <tr>
-                    <th className="px-3 py-2 font-medium">Name</th>
-                    <th className="px-3 py-2 text-right font-medium" title="Present + half days counted as ½">
+                    <th scope="col" className="px-3 py-2 font-medium">
+                      Name
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-right font-medium"
+                      title="Present + half days counted as ½"
+                    >
                       Days in
                     </th>
-                    <th className="px-3 py-2 text-right font-medium">Absent / leave</th>
-                    <th className="px-3 py-2 text-right font-medium" title="Working days with no record for this person">
+                    <th scope="col" className="px-3 py-2 text-right font-medium">
+                      Absent / leave
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-right font-medium"
+                      title="Working days with no record for this person"
+                    >
                       Not recorded
                     </th>
                     {shownTasks.map((t) => (
-                      <th key={t.code} className="px-3 py-2 text-right font-medium whitespace-nowrap">
+                      <th
+                        key={t.code}
+                        scope="col"
+                        className="px-3 py-2 text-right font-medium whitespace-nowrap"
+                      >
                         {t.label}
                         {t.targetPerDay !== null && (
-                          <span className="block font-normal text-stone-400">{t.targetPerDay}/day</span>
+                          <span className="block font-normal text-stone-600">{t.targetPerDay}/day</span>
                         )}
                       </th>
                     ))}
                     <th
+                      scope="col"
                       className="px-3 py-2 text-right font-medium"
                       title="All targeted work, in full-day targets, divided by days in. Mixed tasks add up."
                     >
                       Output
                     </th>
-                    <th className="px-3 py-2 text-right font-medium">Flags</th>
+                    <th scope="col" className="px-3 py-2 text-right font-medium">
+                      Flags
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
@@ -197,11 +210,14 @@ export default async function StaffPerformancePage({
               <table className="border-separate border-spacing-1 text-xs">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 bg-white" />
+                    <th scope="col" className="sticky left-0 z-10 bg-white">
+                      <span className="sr-only">Person</span>
+                    </th>
                     {summary.dates.map((d) => (
                       <th
                         key={d.date}
-                        className={cn('w-9 font-normal', d.working ? 'text-stone-500' : 'text-stone-300')}
+                        scope="col"
+                        className={cn('w-9 font-normal', d.working ? 'text-stone-600' : 'text-stone-400')}
                       >
                         <span className="block">{weekdayInitial(d.date)}</span>
                         <span className="block tabular-nums">{Number(d.date.slice(8, 10))}</span>
@@ -212,7 +228,10 @@ export default async function StaffPerformancePage({
                 <tbody>
                   {summary.people.map((p) => (
                     <tr key={p.staff.id}>
-                      <th className="sticky left-0 z-10 bg-white pr-2 text-left text-sm font-normal whitespace-nowrap">
+                      <th
+                        scope="row"
+                        className="sticky left-0 z-10 bg-white pr-2 text-left text-sm font-normal whitespace-nowrap"
+                      >
                         <Link href={`/admin/performance/staff/${p.staff.id}?${q}`} className="hover:underline">
                           {p.staff.name}
                         </Link>
@@ -244,12 +263,12 @@ function PersonRow({ person: p, shownTasks, query }: { person: PersonSummary; sh
         <Link href={`/admin/performance/staff/${p.staff.id}?${query}`} className="font-medium text-stone-900 hover:underline">
           {p.staff.name}
         </Link>
-        {!p.staff.active && <span className="ml-1 text-xs text-stone-400">(left)</span>}
+        {!p.staff.active && <span className="ml-1 text-xs text-stone-600">(left)</span>}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {formatDays(p.attendanceDays)}
         {p.attendance.half_day > 0 && (
-          <span className="block text-xs text-stone-400">
+          <span className="block text-xs text-stone-600">
             {p.attendance.half_day} half {p.attendance.half_day === 1 ? 'day' : 'days'}
           </span>
         )}
@@ -257,7 +276,7 @@ function PersonRow({ person: p, shownTasks, query }: { person: PersonSummary; sh
       <td className="px-3 py-2 text-right tabular-nums text-stone-600">
         {p.attendance.absent} / {p.attendance.leave}
       </td>
-      <td className={cn('px-3 py-2 text-right tabular-nums', p.unrecordedDates.length > 0 ? 'text-red-700' : 'text-stone-400')}>
+      <td className={cn('px-3 py-2 text-right tabular-nums', p.unrecordedDates.length > 0 ? 'text-red-700' : 'text-stone-600')}>
         {p.unrecordedDates.length}
       </td>
       {shownTasks.map((code) => {
@@ -265,9 +284,9 @@ function PersonRow({ person: p, shownTasks, query }: { person: PersonSummary; sh
         if (!t) return <td key={code} className="px-3 py-2 text-right text-stone-300">—</td>
         return (
           <td key={code} className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
-            <span className={t.total === 0 ? 'text-stone-400' : 'text-stone-900'}>{t.total.toLocaleString('en-IN')}</span>
+            <span className={t.total === 0 ? 'text-stone-600' : 'text-stone-900'}>{t.total.toLocaleString('en-IN')}</span>
             {t.target !== null && t.target > 0 && (
-              <span className="block text-xs text-stone-400">
+              <span className="block text-xs text-stone-600">
                 of {Math.round(t.target).toLocaleString('en-IN')}{' '}
                 <span className={completionTone(t.completion)}>{formatPercent(t.completion)}</span>
               </span>
@@ -278,7 +297,7 @@ function PersonRow({ person: p, shownTasks, query }: { person: PersonSummary; sh
       <td className={cn('px-3 py-2 text-right font-medium tabular-nums', completionTone(p.output.ratio))}>
         {formatPercent(p.output.ratio)}
       </td>
-      <td className={cn('px-3 py-2 text-right tabular-nums', p.flags.total > 0 ? 'text-red-700' : 'text-stone-400')}>
+      <td className={cn('px-3 py-2 text-right tabular-nums', p.flags.total > 0 ? 'text-red-700' : 'text-stone-600')}>
         {p.flags.total}
       </td>
     </tr>

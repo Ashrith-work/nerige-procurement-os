@@ -7,6 +7,17 @@ import { toDisplayUserId } from '@/lib/auth/user-id'
 
 export const metadata = { title: 'My profile · Nerige' }
 
+/**
+ * What each role is called to the person holding it. The page used to say
+ * "Procurement head" to everybody, including the owner.
+ */
+const ROLE_NAMES: Record<string, string> = {
+  admin: 'Owner — everything',
+  procurement_head: 'Procurement head',
+  warehouse_manager: 'Warehouse manager',
+  customer_support: 'Answering questions',
+}
+
 export default async function AdminProfilePage() {
   const user = await requireProcurement()
   const t = getDictionary(user.locale)
@@ -17,8 +28,8 @@ export default async function AdminProfilePage() {
 
       <Card className="space-y-3">
         <Row label="Name" value={user.fullName} />
-        <Row label="User ID" value={toDisplayUserId(user.email) ?? '—'} mono />
-        <Row label="Role" value="Procurement head" />
+        <Row label="Your login" value={toDisplayUserId(user.email) ?? '—'} mono />
+        <Row label="What you can do" value={ROLE_NAMES[user.role] ?? user.role} />
         <Row label="Language" value={LOCALE_NAMES[user.locale]} />
 
         <div className="flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
@@ -35,13 +46,9 @@ export default async function AdminProfilePage() {
       <Card className="space-y-1 text-sm text-stone-600">
         <p className="font-medium text-stone-900">Changing your password</p>
         <p>
-          Passwords are issued, never reset by email — there is no reset link in this portal by
-          design. Ask another admin to run{' '}
-          <code className="rounded bg-stone-100 px-1 font-mono text-xs">
-            npm run provision -- --user-id {toDisplayUserId(user.email) ?? 'you'} --password
-            &lsquo;new&rsquo; --reset-password
-          </code>
-          .
+          Passwords here are issued by hand, never reset by email — there is no reset link, by
+          design, because the weavers&rsquo; addresses cannot receive mail. Ask an owner to issue
+          you a new one; they will give it to you once and it will not be shown again.
         </p>
       </Card>
     </div>

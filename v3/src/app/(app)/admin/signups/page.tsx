@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { PageHeader, EmptyState } from '@/components/ui/primitives'
+import { PageHeader, EmptyState, LinkButton } from '@/components/ui/primitives'
 import { toAuthEmail } from '@/lib/auth/user-id'
 import { DecisionRow, type SignupRow } from './decision-row'
 
@@ -81,8 +81,9 @@ export default async function SignupsPage() {
 
       {rows.length === 0 ? (
         <EmptyState
-          title="Nothing waiting"
-          body="Requests made at /signup appear here for you to approve."
+          title="Nobody is waiting"
+          body="When somebody asks for a login from the sign-up page, their request waits here until you approve or turn it down. Nothing is created until you do."
+          action={<LinkButton href="/admin/vendors">Weavers</LinkButton>}
         />
       ) : (
         <ul className="rounded border border-stone-200 bg-white px-4">
@@ -102,10 +103,12 @@ export default async function SignupsPage() {
                 <span className="text-stone-900">{d.full_name as string}</span>
                 <span
                   className={
-                    d.status === 'approved' ? 'text-emerald-700' : 'text-stone-500'
+                    d.status === 'approved'
+                      ? 'font-medium text-emerald-700'
+                      : 'font-medium text-stone-600'
                   }
                 >
-                  {d.status as string}
+                  {d.status === 'approved' ? 'Approved' : 'Turned down'}
                 </span>
                 {d.decision_note && (
                   <span className="text-stone-500 italic">{d.decision_note as string}</span>

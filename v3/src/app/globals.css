@@ -14,6 +14,38 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/*
+ * Keyboard focus, on everything.
+ *
+ * The controls in `primitives.tsx` carry their own focus ring. Plain links —
+ * which is most of the navigation on these screens, every row of every queue —
+ * carried nothing at all, so a person driving the warehouse tablet from a
+ * keyboard had no way to see where they were. `:where()` is zero-specificity on
+ * purpose: any control that already draws its own ring keeps it, and this only
+ * fills the gap.
+ */
+:where(a, button, summary, [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-stone-900);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/*
+ * Motion explains a change or it does not happen. A skeleton pulsing while a
+ * query runs is the only animation in this build, and somebody who has asked
+ * their device for less motion gets a still one.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background: #fff;
   color: var(--color-stone-900);

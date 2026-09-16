@@ -64,8 +64,8 @@ export function IdentifyRow({
             </div>
           </div>
         ) : (
-          <span className="flex h-full items-center justify-center text-xs text-stone-400">
-            no photo
+          <span className="flex h-full items-center justify-center text-xs text-stone-500">
+            No photo
           </span>
         )}
       </div>
@@ -78,29 +78,42 @@ export function IdentifyRow({
           {product.sku}
         </Link>
         <p className="truncate text-sm text-stone-600">{product.title ?? '—'}</p>
-        <p className="mt-1 text-xs text-stone-500">
+        <p className="mt-1 text-xs text-stone-600 tabular-nums">
           {product.unitsLast30Days} sold in 30 days · {product.unitsLastYear} in a year
         </p>
 
         <form action={formAction} className="mt-2 flex flex-wrap items-center gap-2">
           <input type="hidden" name="sku" value={product.sku} />
-          <Select name="vendor_code" defaultValue="" className="max-w-xs" disabled={pending}>
-            <option value="">Which weaver made this?</option>
+          <label className="sr-only" htmlFor={`weaver-${product.sku}`}>
+            Who made {product.sku}
+          </label>
+          <Select
+            id={`weaver-${product.sku}`}
+            name="vendor_code"
+            defaultValue=""
+            className="max-w-xs"
+            disabled={pending}
+          >
+            <option value="">Who made this saree?</option>
             {vendors.map((v) => (
               <option key={v.code} value={v.code}>
-                {v.code} — {v.displayName}
+                {v.code} · {v.displayName}
               </option>
             ))}
           </Select>
           <Button type="submit" disabled={pending}>
-            {pending ? 'Assigning…' : 'Assign'}
+            {pending ? 'Saving…' : 'Save the weaver'}
           </Button>
 
           {state.status === 'saved' && state.sku === product.sku && (
-            <span className="text-sm text-green-700">{state.message}</span>
+            <span role="status" className="text-sm text-emerald-700">
+              {state.message}
+            </span>
           )}
           {state.status === 'error' && (
-            <span className="text-sm text-red-700">{state.message}</span>
+            <span role="alert" className="text-sm text-red-700">
+              {state.message}
+            </span>
           )}
         </form>
       </div>

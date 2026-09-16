@@ -12,7 +12,7 @@ import {
 } from '@/lib/inwarding/view'
 import { daysAgoIso, todayInIndia } from '@/lib/inwarding/summary'
 
-export const metadata = { title: 'Inwarding · Nerige' }
+export const metadata = { title: 'Parcels · Nerige' }
 
 /** How far back "received recently" reaches. Two weeks covers a late second parcel. */
 const RECENT_DAYS = 14
@@ -59,13 +59,14 @@ export default async function InwardPage() {
   return (
     <div className="max-w-4xl space-y-8">
       <PageHeader
-        title="Inwarding"
-        subtitle="Parcels from weavers: what is expected, and what actually arrived."
+        title="Parcels"
+        subtitle="On the way, part-received, done — and what a weaver promised but has not sent."
       />
 
       {error && (
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          Could not load orders: {error.message}
+          The parcels could not be loaded, so the piles below may be empty when they are not.
+          Reload the page; if it keeps happening, tell a developer: {error.message}
         </p>
       )}
 
@@ -154,13 +155,13 @@ function Pile({
     <section className="space-y-3">
       <div>
         <h2 className="text-base font-medium text-stone-900">
-          {title} <span className="text-stone-400 tabular-nums">{orders.length}</span>
+          {title} <span className="text-stone-600 tabular-nums">{orders.length}</span>
         </h2>
-        <p className="text-sm text-stone-500">{help}</p>
+        <p className="text-sm text-stone-600">{help}</p>
       </div>
 
       {orders.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-stone-300 px-4 py-4 text-sm text-stone-500">
+        <p className="rounded-xl border border-dashed border-stone-300 px-4 py-4 text-sm text-stone-600">
           {empty}
         </p>
       ) : (
@@ -174,7 +175,7 @@ function Pile({
                 <span className="min-w-0">
                   <span className="block font-medium text-stone-900">
                     {o.vendorName ?? o.vendorCode}{' '}
-                    <span className="font-mono text-sm font-normal text-stone-500">{o.orderNumber}</span>
+                    <span className="font-mono text-sm font-normal text-stone-600">{o.orderNumber}</span>
                   </span>
                   <span className="block text-sm text-stone-600 tabular-nums">{detail(o)}</span>
                 </span>

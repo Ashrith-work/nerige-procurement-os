@@ -76,7 +76,7 @@ export function NoPhoto({ className }: { className?: string }) {
       className={`flex items-center justify-center rounded-xl bg-stone-100 ${className ?? ''}`}
       aria-hidden
     >
-      <span className="text-xs text-stone-400">No photo</span>
+      <span className="text-xs text-stone-600">No photo</span>
     </div>
   )
 }

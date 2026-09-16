@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { requireIntakeSubmit } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { Alert, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { FlowStepper } from '@/components/flow/stepper'
+import { runningFlow } from '@/components/flow/flows'
 import { MISSING_CODE } from '@/lib/intake/status'
 import { canEditDraft } from '@/lib/intake/transitions'
 import { loadIntakeContext, loadVocabulary, newIntakeKey, offered, VOCAB_TYPES } from '../_lib/data'
@@ -20,9 +22,19 @@ export const metadata = { title: 'New saree · Nerige' }
  * `?draft=16005` reopens a draft for completion. It carries its own intake key,
  * so completing it updates that row and keeps the code it was given.
  */
-export default async function NewIntakePage({ searchParams }: { searchParams: Promise<{ draft?: string }> }) {
+export default async function NewIntakePage({
+  searchParams,
+}: {
+  /**
+   * `flow=new-saree` while the add-a-saree flow is running, and nothing else.
+   * It adds the progress bar above the form and nothing more: the form, the
+   * intake key, the draft handling and the codes are untouched by it.
+   */
+  searchParams: Promise<{ draft?: string; flow?: string }>
+}) {
   const user = await requireIntakeSubmit()
-  const { draft: draftParam } = await searchParams
+  const { draft: draftParam, flow: flowParam } = await searchParams
+  const flow = runningFlow(flowParam, 'new-saree')
   const supabase = await createClient()
 
   const [context, vocab] = await Promise.all([loadIntakeContext(supabase), loadVocabulary(supabase)])
@@ -71,6 +83,19 @@ export default async function NewIntakePage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {flow && (
+        <FlowStepper
+          flow="new-saree"
+          current={1}
+          hrefs={{
+            code: '/flows/new-saree/code',
+            shoot: '/flows/new-saree/shoot',
+            approve: '/flows/new-saree/approve',
+          }}
+          note="Enter what is on the table. Save, then step 2 shows the code to write on the fabric."
+        />
+      )}
+
       <PageHeader
         title={draft ? `Complete draft #${draft.uniqueCode}` : 'New saree'}
         subtitle="Enter what is on the table. The code to write on the fabric appears when you save."

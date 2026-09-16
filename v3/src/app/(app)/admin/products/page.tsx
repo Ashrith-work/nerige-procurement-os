@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { resolveProductImage, cropStyle, sizedImage } from '@/lib/products/image'
-import { PageHeader, Input, Select, Button, EmptyState } from '@/components/ui/primitives'
+import { format } from 'date-fns'
+import { PageHeader, Input, Select, Button, EmptyState, LinkButton } from '@/components/ui/primitives'
 import {
   SELL_THROUGH_PERIODS,
   resolvePeriod,
@@ -12,7 +13,7 @@ import {
 import { SellThroughBadge } from '@/components/sell-through-badge'
 import { StockBadge } from '@/components/stock-badge'
 
-export const metadata = { title: 'Products · Nerige' }
+export const metadata = { title: 'All designs · Nerige' }
 
 const PAGE_SIZE = 60
 
@@ -98,6 +99,13 @@ export default async function AdminProductsPage({
   const total = count ?? 0
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  // Presentational only: the freshest sales sync among the rows already loaded,
+  // so the sell-through badges below are never shown without their date.
+  const salesAsAt = rows.reduce<string | null>(
+    (latest, r) => (r.sales_synced_at && (!latest || r.sales_synced_at > latest) ? r.sales_synced_at : latest),
+    null,
+  )
+
   const href = (n: number) => {
     const p = new URLSearchParams()
     if (vendorCode) p.set('vendor', vendorCode)
@@ -112,24 +120,41 @@ export default async function AdminProductsPage({
   return (
     <div className="space-y-5">
       <PageHeader
-        title="All products"
+        title="All designs"
         subtitle={`${total.toLocaleString('en-IN')} designs${chosen ? ` · ${chosen.display_name}` : ''}`}
       />
 
+      {/*
+        * The age of the sell-through figures, said once at the top rather than
+        * on every tile. A percentage with no date behind it is read as today's.
+        */}
+      {salesAsAt && (
+        <p className="text-sm text-stone-600">
+          Sell-through counted from sales up to {format(new Date(salesAsAt), 'd MMM yyyy, HH:mm')}.
+        </p>
+      )}
+
       <form action="/admin/products" className="flex flex-wrap gap-2">
-        <Select name="vendor" defaultValue={vendorCode} className="w-auto min-w-44">
-          <option value="">All vendors</option>
+        <label className="sr-only" htmlFor="vendor">
+          Weaver
+        </label>
+        <Select id="vendor" name="vendor" defaultValue={vendorCode} className="w-auto min-w-44">
+          <option value="">Every weaver</option>
           {vendors.map((v) => (
             <option key={v.id} value={v.code}>
-              {v.code} — {v.display_name}
+              {v.code} · {v.display_name}
             </option>
           ))}
         </Select>
+        <label className="sr-only" htmlFor="q">
+          Search by SKU or name
+        </label>
         <Input
+          id="q"
           name="q"
           type="search"
           defaultValue={search}
-          placeholder="Code or name"
+          placeholder="SKU or name"
           className="w-auto min-w-52 flex-1"
         />
         {/*
@@ -145,8 +170,14 @@ export default async function AdminProductsPage({
           ))}
         </Select>
         <label className="flex min-h-11 items-center gap-2 text-sm text-stone-600">
-          <input type="checkbox" name="inactive" value="1" defaultChecked={showInactive} />
-          Include inactive
+          <input
+            type="checkbox"
+            name="inactive"
+            value="1"
+            defaultChecked={showInactive}
+            className="h-5 w-5 accent-stone-900"
+          />
+          Include designs Shopify no longer lists
         </label>
         <Button type="submit" variant="secondary">
           Search
@@ -154,7 +185,11 @@ export default async function AdminProductsPage({
       </form>
 
       {rows.length === 0 ? (
-        <EmptyState title="Nothing here" body="No design matches that." />
+        <EmptyState
+          title="No design matches that"
+          body="Try part of the SKU — a weaver's code and the number at the end are usually enough — or clear the search to see the whole catalogue."
+          action={<LinkButton href="/admin/products">Show the whole catalogue</LinkButton>}
+        />
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
           {rows.map((row) => {
@@ -189,8 +224,8 @@ export default async function AdminProductsPage({
                     )}
                     <StockBadge qty={row.qty_available} />
                     {image.isManual && (
-                      <span className="absolute top-1 right-1 rounded bg-stone-900/80 px-1 text-[10px] text-white">
-                        edited
+                      <span className="absolute top-1 right-1 rounded bg-stone-900/90 px-1.5 py-0.5 text-[10px] text-white">
+                        Photo replaced
                       </span>
                     )}
                   </div>
@@ -206,7 +241,9 @@ export default async function AdminProductsPage({
                       period={period}
                     />
                   )}
-                  {!row.is_active && <p className="text-[11px] text-amber-700">Not in Shopify</p>}
+                  {!row.is_active && (
+                    <p className="text-[11px] text-amber-800">Shopify no longer lists this</p>
+                  )}
                 </Link>
               </li>
             )
@@ -215,24 +252,12 @@ export default async function AdminProductsPage({
       )}
 
       {pages > 1 && (
-        <nav className="flex items-center justify-between gap-3">
-          {page > 1 ? (
-            <Link href={href(page - 1)}>
-              <Button variant="secondary">Previous</Button>
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-sm text-stone-500 tabular-nums">
+        <nav className="flex items-center justify-between gap-3" aria-label="More designs">
+          {page > 1 ? <LinkButton href={href(page - 1)}>Previous</LinkButton> : <span />}
+          <span className="text-sm text-stone-600 tabular-nums">
             Page {page} of {pages}
           </span>
-          {page < pages ? (
-            <Link href={href(page + 1)}>
-              <Button variant="secondary">Next</Button>
-            </Link>
-          ) : (
-            <span />
-          )}
+          {page < pages ? <LinkButton href={href(page + 1)}>Next</LinkButton> : <span />}
         </nav>
       )}
     </div>

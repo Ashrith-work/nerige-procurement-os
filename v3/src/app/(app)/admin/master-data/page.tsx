@@ -7,7 +7,7 @@ import { SKU_VOCAB_TYPES, VOCAB_LABELS, VOCAB_TYPES, type VocabType } from '../.
 import { CodeRow, type CodeRowData } from './code-row'
 import { AddValueForm } from './add-value-form'
 
-export const metadata = { title: 'Master data · Nerige' }
+export const metadata = { title: 'Saree words · Nerige' }
 
 interface MasterRow {
   type: VocabType
@@ -110,15 +110,22 @@ export default async function MasterDataPage({ searchParams }: { searchParams: P
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
-        title="Master data"
-        subtitle="Name each code once. Only named, active values are offered when a new saree is entered."
+        title="Saree words"
+        subtitle="What each code in a SKU means. Name a code once and it is offered every time a new saree is added."
       />
 
-      {error && <Alert tone="error">Could not load master data: {error.message}</Alert>}
+      {error && (
+        <Alert tone="error">
+          The saree words could not be loaded, so this list may be incomplete. Reload the page;
+          if it keeps happening, tell a developer: {error.message}
+        </Alert>
+      )}
 
       {(drafts ?? []).length > 0 && (
         <section className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <h2 className="text-sm font-medium text-amber-900">Drafts waiting for a value</h2>
+          <h2 className="text-sm font-medium text-amber-900">
+            Sarees held up waiting for a word
+          </h2>
           <ul className="space-y-1 text-sm">
             {(drafts ?? []).map((d) => (
               <li key={d.unique_code as number}>
@@ -132,38 +139,46 @@ export default async function MasterDataPage({ searchParams }: { searchParams: P
         </section>
       )}
 
-      <nav className="-mx-4 flex gap-1 overflow-x-auto px-4" aria-label="Types">
+      <nav className="-mx-4 flex gap-1 overflow-x-auto px-4" aria-label="Kinds of word">
         {VOCAB_TYPES.map((t) => {
           const count = unnamedByType.get(t) ?? 0
           return (
             <Link
               key={t}
               href={`/admin/master-data?type=${t}`}
+              aria-current={t === type ? 'page' : undefined}
               className={cn(
                 'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm',
                 t === type ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50',
               )}
             >
               {VOCAB_LABELS[t]}
-              {count > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-xs text-white tabular-nums">{count}</span>}
+              {count > 0 && (
+                <span className="rounded-full bg-amber-700 px-1.5 text-xs text-white tabular-nums">
+                  <span className="sr-only">still to name: </span>
+                  {count}
+                </span>
+              )}
             </Link>
           )
         })}
       </nav>
 
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-stone-600">
         {isSkuType
-          ? `${VOCAB_LABELS[type]} codes are found in SKUs by the Shopify sync. The code is fixed; only its name is yours.`
-          : `${VOCAB_LABELS[type]} has no place in the SKU — it reaches Shopify and the product copy. Values are added here by hand.`}{' '}
-        Retiring stops a value being offered; sarees already carrying it are unaffected.
+          ? `${VOCAB_LABELS[type]} codes are found inside SKUs when the catalogue syncs. The code is fixed; only its name is yours.`
+          : `${VOCAB_LABELS[type]} has no place in the SKU — it reaches Shopify and the product copy. These words are added here by hand.`}{' '}
+        Retiring a word stops it being offered; sarees already carrying it are unaffected.
       </p>
 
       <section className="space-y-2">
         <h2 className="font-medium text-stone-900">
-          Needs a name <span className="text-stone-400 tabular-nums">{unnamed.length}</span>
+          Needs a name <span className="text-stone-600 tabular-nums">{unnamed.length}</span>
         </h2>
         {unnamed.length === 0 ? (
-          <p className="text-sm text-stone-500">Every {VOCAB_LABELS[type].toLowerCase()} code has a name.</p>
+          <p className="text-sm text-stone-600">
+            Every {VOCAB_LABELS[type].toLowerCase()} code has a name.
+          </p>
         ) : (
           <ul className="rounded-xl border border-stone-200 bg-white px-4">
             {unnamed.map((r) => (
@@ -177,10 +192,13 @@ export default async function MasterDataPage({ searchParams }: { searchParams: P
 
       <section className="space-y-2">
         <h2 className="font-medium text-stone-900">
-          Named <span className="text-stone-400 tabular-nums">{named.length}</span>
+          Named <span className="text-stone-600 tabular-nums">{named.length}</span>
         </h2>
         {named.length === 0 ? (
-          <EmptyState title="Nothing named yet" body={`No ${VOCAB_LABELS[type].toLowerCase()} can be chosen at intake until one is named or added.`} />
+          <EmptyState
+            title="Nothing named yet"
+            body={`Until one ${VOCAB_LABELS[type].toLowerCase()} has a name, nobody can choose one while adding a saree. Name a code above, or add a word of your own.`}
+          />
         ) : (
           <ul className="rounded-xl border border-stone-200 bg-white px-4">
             {named.map((r) => (
@@ -192,8 +210,8 @@ export default async function MasterDataPage({ searchParams }: { searchParams: P
 
       {ignored.length > 0 && (
         <details className="space-y-2">
-          <summary className="cursor-pointer font-medium text-stone-700">
-            Ignored <span className="text-stone-400 tabular-nums">{ignored.length}</span>
+          <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-stone-700">
+            Ignored <span className="ml-2 text-stone-600 tabular-nums">{ignored.length}</span>
           </summary>
           <ul className="mt-2 rounded-xl border border-stone-200 bg-white px-4">
             {ignored.map((r) => (

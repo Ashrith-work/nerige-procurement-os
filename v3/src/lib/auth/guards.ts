@@ -23,7 +23,33 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(url && key && !/placeholder|YOUR-PROJECT/i.test(url))
 }
 
-/** Only ever redirect to a path on this origin, never to a supplied host. */
-export function safeNext(next: string | null | undefined): string {
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+/** Anything a browser or a log reader could be made to misread. */
+function hasControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0)
+    if (code < 0x20 || code === 0x7f) return true
+  }
+  return false
+}
+
+/**
+ * Only ever redirect to a path on this origin, never to a supplied host.
+ *
+ * `startsWith('/') && !startsWith('//')` alone is not enough. A browser treats a
+ * backslash as a path separator in this position, so a target beginning slash-
+ * backslash is read as a protocol-relative URL and leaves the origin — which
+ * turns a redirect parameter into an open redirect, the classic way a sign-in
+ * link is used to land somebody on a convincing copy of the sign-in page. A
+ * control character hides the same trick from whoever reads the log afterwards.
+ *
+ * So: no backslash and no control character anywhere in it, and the character
+ * after the leading slash must be an ordinary path character. Written as an
+ * explicit scan rather than one clever regular expression because this is a
+ * security boundary, and a reader should not have to count escapes to check it.
+ */
+export function safeNext(next: string | null | undefined, fallback = '/'): string {
+  if (typeof next !== 'string' || next === '') return fallback
+  if (next.includes('\\') || hasControlCharacter(next)) return fallback
+  if (!next.startsWith('/') || next.startsWith('//')) return fallback
+  return next
 }

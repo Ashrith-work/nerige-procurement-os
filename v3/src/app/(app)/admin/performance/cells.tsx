@@ -26,32 +26,41 @@ export function attendanceLabel(a: Attendance): string {
 export function GridCell({ cell, title }: { cell: Cell; title: string }) {
   if (cell.kind === 'not_expected') {
     return (
-      <span title={title} className="flex h-9 w-9 items-center justify-center rounded text-xs text-stone-300">
-        ·
+      <span title={title} className="flex h-9 w-9 items-center justify-center rounded text-xs text-stone-400">
+        <span aria-hidden>·</span>
+        <span className="sr-only">{title}: not a working day</span>
       </span>
     )
   }
   if (cell.kind === 'missing') {
     return (
       <span title={`${title}: not recorded`} className={cn('flex h-9 w-9 items-center justify-center rounded text-xs', MISSING)}>
-        —
+        <span aria-hidden>—</span>
+        <span className="sr-only">{title}: not recorded</span>
       </span>
     )
   }
   const short = ATTENDANCE.find((a) => a.value === cell.attendance)?.short ?? '?'
+  const spoken = `${title}: ${attendanceLabel(cell.attendance)}${cell.units ? `, ${cell.units} units` : ''}${
+    cell.flags ? `, ${cell.flags} flag${cell.flags === 1 ? '' : 's'}` : ''
+  }${cell.note ? ', has a note' : ''}`
   return (
     <span
-      title={`${title}: ${attendanceLabel(cell.attendance)}${cell.units ? `, ${cell.units} units` : ''}${
-        cell.flags ? `, ${cell.flags} flag${cell.flags === 1 ? '' : 's'}` : ''
-      }${cell.note ? ', has a note' : ''}`}
+      title={spoken}
       className={cn(
         'relative flex h-9 w-9 items-center justify-center rounded text-xs font-medium',
         ATTENDANCE_TONE[cell.attendance],
       )}
     >
-      {short}
+      {/* The letter and the colour say the same thing twice; the full sentence
+          is there for anyone reading with neither. */}
+      <span className="sr-only">{spoken}</span>
+      <span aria-hidden>{short}</span>
       {cell.flags > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] leading-none text-white">
+        <span
+          aria-hidden
+          className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-700 px-0.5 text-[10px] leading-none text-white"
+        >
           {cell.flags}
         </span>
       )}
@@ -61,7 +70,7 @@ export function GridCell({ cell, title }: { cell: Cell; title: string }) {
 
 export function Legend() {
   return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600">
       {ATTENDANCE.map((a) => (
         <li key={a.value} className="flex items-center gap-1.5">
           <span className={cn('flex h-5 w-5 items-center justify-center rounded text-[10px] font-medium', ATTENDANCE_TONE[a.value])}>
@@ -75,11 +84,16 @@ export function Legend() {
         Not recorded
       </li>
       <li className="flex items-center gap-1.5">
-        <span className="flex h-5 w-5 items-center justify-center text-stone-300">·</span>
-        Not a working day / not employed
+        <span aria-hidden className="flex h-5 w-5 items-center justify-center text-stone-400">·</span>
+        Not a working day, or not employed yet
       </li>
       <li className="flex items-center gap-1.5">
-        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-0.5 text-[10px] text-white">1</span>
+        <span
+          aria-hidden
+          className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-700 px-0.5 text-[10px] text-white"
+        >
+          1
+        </span>
         Quality flags
       </li>
     </ul>

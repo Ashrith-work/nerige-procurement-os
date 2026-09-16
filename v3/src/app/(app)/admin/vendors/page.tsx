@@ -4,9 +4,9 @@ import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { LOCALE_NAMES, type Locale } from '@/lib/i18n'
 import { toDisplayUserId } from '@/lib/auth/user-id'
-import { PageHeader, Button, EmptyState } from '@/components/ui/primitives'
+import { PageHeader, EmptyState, LinkButton } from '@/components/ui/primitives'
 
-export const metadata = { title: 'My vendors · Nerige' }
+export const metadata = { title: 'Weavers · Nerige' }
 
 /**
  * Every weaver Nerige buys from, on one screen.
@@ -74,29 +74,43 @@ export default async function AdminVendorsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="My vendors"
-        subtitle={`${vendors.length} weavers`}
+        title="Weavers"
+        subtitle={`${vendors.length} weaving houses, their logins and languages`}
         action={
           <div className="flex gap-2">
-            <Link href="/admin/products">
-              <Button variant="secondary">All products</Button>
-            </Link>
-            <Link href="/admin/vendors/new">
-              <Button>Add a vendor</Button>
-            </Link>
+            <LinkButton href="/admin/products">All designs</LinkButton>
+            <LinkButton href="/admin/vendors/new" variant="primary">
+              Add a weaver
+            </LinkButton>
           </div>
         }
       />
 
       {vendors.length === 0 ? (
-        <EmptyState title="No vendors yet" body="Add one, or load the catalogue to derive them from SKU prefixes." />
+        <EmptyState
+          title="No weavers yet"
+          body="A weaver appears here as soon as the catalogue syncs a SKU carrying her code. Until then, add the first house by hand."
+          action={
+            <LinkButton href="/admin/vendors/new" variant="primary">
+              Add a weaver
+            </LinkButton>
+          }
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-stone-200">
           <table className="w-full text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50 text-left text-stone-500">
+            <caption className="sr-only">
+              Every weaving house, with its code, language, login and open orders
+            </caption>
+            {/*
+              * The house comes first, because that is what people say out loud.
+              * The code is second and monospace: it is the SKU prefix, read
+              * character by character.
+              */}
+            <thead className="border-b border-stone-200 bg-stone-50 text-left text-stone-600">
               <tr>
+                <Th>Weaver</Th>
                 <Th>Code</Th>
-                <Th>Name</Th>
                 <Th>Language</Th>
                 <Th>Login</Th>
                 <Th className="text-right">Designs</Th>
@@ -112,15 +126,15 @@ export default async function AdminVendorsPage() {
                     <Td>
                       <Link
                         href={`/admin/vendors/${encodeURIComponent(v.code)}`}
-                        className="font-mono font-medium text-stone-900 underline-offset-2 hover:underline"
+                        className="inline-flex min-h-11 items-center font-medium text-stone-900 underline-offset-2 hover:underline"
                       >
-                        {v.code}
+                        {v.display_name}
                       </Link>
                     </Td>
-                    <Td>{v.display_name}</Td>
+                    <Td className="font-mono text-stone-700">{v.code}</Td>
                     <Td>{LOCALE_NAMES[v.default_locale as Locale] ?? v.default_locale}</Td>
                     <Td className="font-mono text-xs text-stone-600">
-                      {login?.email ? (toDisplayUserId(login.email) ?? login.email) : '—'}
+                      {login?.email ? (toDisplayUserId(login.email) ?? login.email) : 'No login yet'}
                     </Td>
                     <Td className="text-right tabular-nums">
                       {(designs.get(v.id) ?? 0).toLocaleString('en-IN')}
@@ -133,7 +147,7 @@ export default async function AdminVendorsPage() {
                         // Not "—". A weaver who has never signed in has seen
                         // none of the orders issued to her, and that is worth
                         // saying in words.
-                        <span className="text-amber-700">Never</span>
+                        <span className="font-medium text-amber-800">Never</span>
                       )}
                     </Td>
                   </tr>
@@ -148,7 +162,11 @@ export default async function AdminVendorsPage() {
 }
 
 function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-3 py-2 font-medium whitespace-nowrap ${className}`}>{children}</th>
+  return (
+    <th scope="col" className={`px-3 py-2 font-medium whitespace-nowrap ${className}`}>
+      {children}
+    </th>
+  )
 }
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {

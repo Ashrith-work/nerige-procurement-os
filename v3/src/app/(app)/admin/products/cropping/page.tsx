@@ -1,7 +1,6 @@
-import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, Select, Button, EmptyState } from '@/components/ui/primitives'
+import { PageHeader, Select, Button, EmptyState, LinkButton } from '@/components/ui/primitives'
 import { resolveProductImage, type CropRect } from '@/lib/products/image'
 import { CropQueue, type QueueItem } from './crop-queue'
 
@@ -129,15 +128,14 @@ export default async function CroppingPage({
       <PageHeader
         title="Cropping"
         subtitle="How each saree is framed on the weaver's card, her catalogue, and the picture she is sent on WhatsApp."
-        action={
-          <Link href="/admin/products" className="text-sm text-stone-600 underline-offset-2 hover:underline">
-            All products
-          </Link>
-        }
+        action={<LinkButton href="/admin/products">All designs</LinkButton>}
       />
 
       <form action="/admin/products/cropping" className="flex flex-wrap items-end gap-2">
-        <Select name="vendor" defaultValue={vendorCode} className="w-auto min-w-48">
+        <label className="sr-only" htmlFor="crop-vendor">
+          Weaver
+        </label>
+        <Select id="crop-vendor" name="vendor" defaultValue={vendorCode} className="w-auto min-w-48">
           <option value="">Every weaver</option>
           {vendors
             .filter((v) => !v.is_placeholder)
@@ -148,28 +146,47 @@ export default async function CroppingPage({
             ))}
         </Select>
 
-        <Select name="include" defaultValue={includeCropped ? 'all' : 'todo'} className="w-auto min-w-52">
+        <label className="sr-only" htmlFor="crop-include">
+          Which sarees
+        </label>
+        <Select
+          id="crop-include"
+          name="include"
+          defaultValue={includeCropped ? 'all' : 'todo'}
+          className="w-auto min-w-52"
+        >
           <option value="todo">Not framed by hand yet</option>
           <option value="all">Everything, to go back over</option>
         </Select>
 
         <Button type="submit" variant="secondary">
-          Show
+          Show these
         </Button>
       </form>
 
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-stone-600 tabular-nums">
         {(withoutCrop ?? 0).toLocaleString('en-IN')} of {(total ?? 0).toLocaleString('en-IN')} sarees
         {chosen ? ` at ${chosen.display_name}` : ''} still use the default framing. Best-selling first.
       </p>
 
       {items.length === 0 ? (
         <EmptyState
-          title="Nothing to crop here"
+          title={includeCropped ? 'No saree matches this' : 'Every one of these is framed by hand'}
           body={
             includeCropped
-              ? 'No active sarees with a photograph match this selection.'
-              : 'Every saree in this selection has been framed by hand. Switch to “Everything” to go back over them.'
+              ? 'Nothing in this selection is both on Shopify and carrying a photograph. Widen it to every weaver.'
+              : 'There is nothing left to frame here. Go back over the ones already done, or pick another weaver.'
+          }
+          action={
+            includeCropped ? (
+              <LinkButton href="/admin/products/cropping?include=all">Every weaver</LinkButton>
+            ) : (
+              <LinkButton
+                href={`/admin/products/cropping?include=all${chosen ? `&vendor=${encodeURIComponent(chosen.code)}` : ''}`}
+              >
+                Go back over the framed ones
+              </LinkButton>
+            )
           }
         />
       ) : (

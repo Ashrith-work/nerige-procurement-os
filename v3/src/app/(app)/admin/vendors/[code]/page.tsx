@@ -1,15 +1,14 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { format } from 'date-fns'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { LOCALES, LOCALE_NAMES } from '@/lib/i18n'
 import { toDisplayUserId } from '@/lib/auth/user-id'
-import { PageHeader, Card, Button, Select, Field, StatusBadge } from '@/components/ui/primitives'
+import { PageHeader, Card, Button, LinkButton, Select, Field, StatusBadge } from '@/components/ui/primitives'
 import { setVendorLocale, startImpersonating } from '../actions'
 import { CredentialPanel } from './credential-panel'
 
-export const metadata = { title: 'Vendor · Nerige' }
+export const metadata = { title: 'One weaver · Nerige' }
 
 interface Login {
   user_id: string
@@ -94,9 +93,9 @@ export default async function AdminVendorPage({ params }: { params: Promise<{ co
         subtitle={vendor.code}
         action={
           <div className="flex gap-2">
-            <Link href={`/admin/products?vendor=${encodeURIComponent(vendor.code)}`}>
-              <Button variant="secondary">Her products</Button>
-            </Link>
+            <LinkButton href={`/admin/products?vendor=${encodeURIComponent(vendor.code)}`}>
+              Her designs
+            </LinkButton>
 
             {/* The whole point of this button: see her screen, not a report
                 about her screen. */}
@@ -110,18 +109,18 @@ export default async function AdminVendorPage({ params }: { params: Promise<{ co
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Stat label="Designs" value={summary?.design_count ?? 0} />
-        <Stat label="To reorder" value={summary?.reorder_count ?? 0} />
+        <Stat label="Could be made again" value={summary?.reorder_count ?? 0} />
         <Stat label="Open orders" value={summary?.open_order_count ?? 0} />
         <Stat
           label="Last order"
-          value={summary?.last_order_at ? format(new Date(summary.last_order_at), 'd MMM') : '—'}
+          value={summary?.last_order_at ? format(new Date(summary.last_order_at), 'd MMM') : 'Never'}
         />
       </div>
 
       <Card className="space-y-3">
         <div>
           <h2 className="text-base font-medium text-stone-900">Portal language</h2>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-600">
             Her portal opens in this language from her first sign-in. She can change it herself
             from her own header; that choice then overrides this one for her login only.
           </p>
@@ -168,7 +167,10 @@ export default async function AdminVendorPage({ params }: { params: Promise<{ co
         <p>
           Status <StatusBadge status={vendor.status} />
         </p>
-        <p>Usual lead time: {vendor.default_lead_time_days} days</p>
+        <p>
+          Usually takes <span className="tabular-nums">{vendor.default_lead_time_days}</span> days to
+          weave an order
+        </p>
         {vendor.primary_phone && <p>Phone: {vendor.primary_phone}</p>}
       </Card>
     </div>
@@ -178,7 +180,7 @@ export default async function AdminVendorPage({ params }: { params: Promise<{ co
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl border border-stone-200 px-3 py-2.5">
-      <p className="text-xs text-stone-500">{label}</p>
+      <p className="text-xs text-stone-600">{label}</p>
       <p className="text-lg font-medium tabular-nums text-stone-900">
         {typeof value === 'number' ? value.toLocaleString('en-IN') : value}
       </p>

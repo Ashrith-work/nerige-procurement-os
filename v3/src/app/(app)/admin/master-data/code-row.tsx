@@ -55,7 +55,7 @@ export function CodeRow({ row }: { row: CodeRowData }) {
         <span className="text-xs text-stone-500 tabular-nums">
           {row.designCount.toLocaleString('en-IN')} design{row.designCount === 1 ? '' : 's'}
         </span>
-        {!row.active && <span className="rounded bg-stone-200 px-1.5 text-xs text-stone-700">retired</span>}
+        {!row.active && <span className="rounded bg-stone-200 px-1.5 py-0.5 text-xs text-stone-700">Retired</span>}
       </div>
 
       {row.examples.length > 0 && (
@@ -66,7 +66,7 @@ export function CodeRow({ row }: { row: CodeRowData }) {
                 {e.imageUrl ? (
                   <Image src={e.imageUrl} alt={e.title ?? e.sku} fill sizes="96px" className="object-cover" unoptimized />
                 ) : (
-                  <span className="flex h-full items-center justify-center text-xs text-stone-400">no photo</span>
+                  <span className="flex h-full items-center justify-center text-xs text-stone-500">No photo</span>
                 )}
               </div>
               <p className="mt-1 truncate font-mono text-[11px] text-stone-500" title={e.title ?? e.sku}>
@@ -83,6 +83,7 @@ export function CodeRow({ row }: { row: CodeRowData }) {
             {hidden}
             <Input
               name="value"
+              aria-label={`What ${row.code} means`}
               defaultValue={row.value ?? ''}
               placeholder={row.status === 'unnamed' ? 'What does this code mean?' : 'Name'}
               maxLength={120}
@@ -117,7 +118,12 @@ export function CodeRow({ row }: { row: CodeRowData }) {
       </div>
 
       {latest && (
-        <p className={latest.status === 'error' ? 'text-sm text-red-700' : 'text-sm text-emerald-700'}>{latest.message}</p>
+        <p
+          role={latest.status === 'error' ? 'alert' : 'status'}
+          className={latest.status === 'error' ? 'text-sm text-red-700' : 'text-sm text-emerald-700'}
+        >
+          {latest.message}
+        </p>
       )}
     </li>
   )

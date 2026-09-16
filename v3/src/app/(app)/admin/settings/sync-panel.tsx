@@ -101,7 +101,7 @@ export function SyncPanel({ runs }: { runs: SyncRun[] }) {
                   label={run.status}
                 />
                 <span className="text-stone-600">{KIND_LABELS[run.kind] ?? run.kind}</span>
-                <span className="text-stone-400">
+                <span className="text-stone-500">
                   {format(new Date(run.started_at), 'd MMM HH:mm')}
                 </span>
                 {run.status === 'succeeded' && (

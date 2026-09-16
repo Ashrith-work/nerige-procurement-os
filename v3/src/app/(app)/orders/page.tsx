@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { EmptyState, PageHeader, StatusBadge } from '@/components/ui/primitives'
+import { EmptyState, LinkButton, PageHeader, StatusBadge } from '@/components/ui/primitives'
 
 export const metadata = { title: 'Orders · Nerige' }
 
@@ -52,11 +52,16 @@ export default async function OrdersPage() {
 
   if (orders.length === 0) {
     return (
-      <div className="space-y-5">
-        <PageHeader title="Orders" />
+      <div className="mx-auto max-w-3xl space-y-5">
+        <PageHeader title="Orders" subtitle="What you have sent, and where it has got to." />
         <EmptyState
           title="Nothing sent yet"
-          body="Orders appear here once you have chosen a vendor on the reorder screen and pressed send."
+          body="An order appears here the moment you send one. Start with the reorder grid: pick the designs worth making again, say how many, and send."
+          action={
+            <LinkButton href="/reorder" variant="primary">
+              Open the reorder grid
+            </LinkButton>
+          }
         />
       </div>
     )
@@ -75,10 +80,12 @@ export default async function OrdersPage() {
 
       {batches.map((batch) => (
         <section key={batch.batchId} className="space-y-2">
-          <h2 className="text-sm text-stone-500">
+          <h2 className="text-sm text-stone-600">
             {format(new Date(batch.issuedAt), 'd MMM yyyy')}
-            <span className="text-stone-400"> · </span>
-            {batch.orders.length} {batch.orders.length === 1 ? 'vendor' : 'vendors'}
+            <span className="text-stone-400" aria-hidden>
+              {' · '}
+            </span>
+            {batch.orders.length} {batch.orders.length === 1 ? 'weaver' : 'weavers'}
           </h2>
 
           <ul className="space-y-2">
@@ -92,13 +99,15 @@ export default async function OrdersPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-base text-stone-900">
-                        {vendor?.display_name ?? 'Unknown vendor'}{' '}
-                        <span className="font-mono text-sm text-stone-400">{vendor?.code}</span>
+                        {vendor?.display_name ?? 'Weaver not known'}{' '}
+                        <span className="font-mono text-sm text-stone-600">{vendor?.code}</span>
                       </p>
-                      <p className="mt-0.5 text-sm text-stone-500">
+                      <p className="mt-0.5 text-sm text-stone-600">
                         <span className="font-mono">{o.order_number}</span>
                         <span className="text-stone-400"> · </span>
-                        <span className="tabular-nums">{o.order_lines?.[0]?.count ?? 0} lines</span>
+                        <span className="tabular-nums">
+                          {o.order_lines?.[0]?.count ?? 0} designs
+                        </span>
                         {o.promised_date && (
                           <>
                             <span className="text-stone-400"> · </span>
@@ -123,7 +132,7 @@ export default async function OrdersPage() {
       ))}
 
       {(count ?? 0) > orders.length && (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-stone-600 tabular-nums">
           Showing the most recent {orders.length} of {count} orders.
         </p>
       )}

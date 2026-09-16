@@ -1,10 +1,10 @@
 import { requireAdmin } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader, EmptyState } from '@/components/ui/primitives'
+import { PageHeader, EmptyState, LinkButton } from '@/components/ui/primitives'
 import { resolveProductImage } from '@/lib/products/image'
 import { IdentifyRow, type UnidentifiedProduct, type VendorOption } from './identify-row'
 
-export const metadata = { title: 'To be identified · Nerige' }
+export const metadata = { title: 'Whose saree is this · Nerige' }
 
 const PAGE_SIZE = 50
 
@@ -63,10 +63,11 @@ export default async function UnidentifiedProductsPage({
   if (!placeholder) {
     return (
       <div className="max-w-3xl space-y-6">
-        <PageHeader title="To be identified" />
+        <PageHeader title="Whose saree is this" />
         <EmptyState
-          title="Not set up yet"
-          body="No placeholder vendor exists, so nothing can be parked for identification. Migration 026 has not been applied to this database."
+          title="This screen is not switched on yet"
+          body="There is nowhere to park a saree whose code names no weaver, so none has been. A developer needs to bring this database up to date before the screen can do anything."
+          action={<LinkButton href="/admin/products">All designs</LinkButton>}
         />
       </div>
     )
@@ -126,18 +127,19 @@ export default async function UnidentifiedProductsPage({
   return (
     <div className="max-w-3xl space-y-6">
       <PageHeader
-        title="To be identified"
+        title="Whose saree is this"
         subtitle={
           total === 0
-            ? 'Every saree in the catalogue has a weaver.'
-            : `${total} sarees arrived with a stock number where the vendor code should be. Commonest sellers first — those are the ones that cannot be reordered until this is done.`
+            ? 'Every saree in the catalogue has a weaver against it.'
+            : `${total} sarees arrived with a stock number where the weaver's code should be. Best sellers first — those are the ones that cannot be reordered until somebody says who made them.`
         }
       />
 
       {products.length === 0 ? (
         <EmptyState
-          title="Nothing waiting"
-          body="No product is sitting with the placeholder vendor."
+          title="Every saree has a weaver"
+          body="A saree lands here when its code names no weaver. Nothing is waiting, so there is nothing to decide."
+          action={<LinkButton href="/admin/products">All designs</LinkButton>}
         />
       ) : (
         <ul className="rounded border border-stone-200 bg-white px-4">
@@ -148,19 +150,15 @@ export default async function UnidentifiedProductsPage({
       )}
 
       {pages > 1 && (
-        <nav className="flex items-center gap-3 text-sm">
+        <nav className="flex items-center gap-3 text-sm" aria-label="More sarees">
           {page > 1 && (
-            <a className="underline" href={`/admin/products/unidentified?page=${page - 1}`}>
-              Previous
-            </a>
+            <LinkButton href={`/admin/products/unidentified?page=${page - 1}`}>Previous</LinkButton>
           )}
-          <span className="text-stone-500">
+          <span className="text-stone-600 tabular-nums">
             Page {page} of {pages}
           </span>
           {page < pages && (
-            <a className="underline" href={`/admin/products/unidentified?page=${page + 1}`}>
-              Next
-            </a>
+            <LinkButton href={`/admin/products/unidentified?page=${page + 1}`}>Next</LinkButton>
           )}
         </nav>
       )}

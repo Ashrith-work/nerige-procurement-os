@@ -5,6 +5,8 @@ import { requireReceiving } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { Alert, StatusBadge } from '@/components/ui/primitives'
 import { PrintButton } from '@/components/print-button'
+import { FlowStepper } from '@/components/flow/stepper'
+import { runningFlow } from '@/components/flow/flows'
 import {
   INWARD_ORDER_SELECT,
   REJECT_REASON_LABELS,
@@ -29,10 +31,19 @@ export const metadata = { title: 'Receive order · Nerige' }
  */
 export default async function InwardOrderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orderId: string }>
+  /**
+   * `flow=receive` while the receiving flow is running, and nothing else. It
+   * adds the progress bar above the sheet; the sheet, the form and the counts
+   * are identical with or without it.
+   */
+  searchParams: Promise<{ flow?: string }>
 }) {
   const { orderId } = await params
+  const { flow: flowParam } = await searchParams
+  const flow = runningFlow(flowParam, 'receive')
   await requireReceiving()
 
   if (!/^[0-9a-f-]{36}$/i.test(orderId)) notFound()
@@ -50,6 +61,18 @@ export default async function InwardOrderPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-10">
+      {flow && (
+        <FlowStepper
+          flow="receive"
+          current={2}
+          hrefs={{
+            parcel: '/flows/receive',
+            done: `/flows/receive/done?order=${order.id}`,
+          }}
+          note="Count each line, then record the parcel at the bottom. Step 3 shows what was recorded and what is still owed."
+        />
+      )}
+
       <header className="space-y-2">
         <Link
           href="/warehouse/inward"

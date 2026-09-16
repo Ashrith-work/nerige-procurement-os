@@ -59,8 +59,11 @@ export default async function StaffMemberPage({
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
-      <Link href={`/admin/performance?${periodQuery(period)}`} className="text-sm text-stone-500 hover:underline">
-        ← Staff performance
+      <Link
+        href={`/admin/performance?${periodQuery(period)}`}
+        className="inline-flex min-h-11 items-center text-sm text-stone-600 hover:underline"
+      >
+        Staff performance
       </Link>
 
       <PageHeader
@@ -85,6 +88,15 @@ export default async function StaffMemberPage({
       <Card className="space-y-2">
         <h2 className="text-sm font-medium text-stone-700">Work</h2>
         <table className="w-full text-sm">
+          <caption className="sr-only">Work done in this period, against the target</caption>
+          <thead className="sr-only">
+            <tr>
+              <th scope="col">Task</th>
+              <th scope="col">Done</th>
+              <th scope="col">Target</th>
+              <th scope="col">Share of target</th>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-stone-100">
             {person.tasks
               .filter((t) => t.total > 0 || t.target !== null)
@@ -141,14 +153,15 @@ export default async function StaffMemberPage({
                     </div>
                     {r.flags.map((f) => (
                       <p key={f.id} className="text-red-800">
-                        ⚑ {FLAG_KINDS.find((k) => k.value === f.kind)?.label}
+                        <span className="font-medium">Flag:</span>{' '}
+                        {FLAG_KINDS.find((k) => k.value === f.kind)?.label}
                         {f.orderRef && <span className="ml-1 font-mono">{f.orderRef}</span>}
                         {f.note && <span className="ml-1">— {f.note}</span>}
                       </p>
                     ))}
                     {r.note && <p className="text-stone-600 italic">“{r.note}”</p>}
-                    <p className="text-xs text-stone-400">
-                      Recorded by {r.recordedByName ?? 'unknown'}
+                    <p className="text-xs text-stone-600">
+                      Recorded by {r.recordedByName ?? 'somebody no longer on the system'}
                     </p>
                   </div>
                 ) : (
@@ -174,7 +187,7 @@ function Figure({ label, value, hint, tone }: { label: string; value: string; hi
     <Card className="p-4">
       <p className="text-xs text-stone-500">{label}</p>
       <p className={cn('mt-1 text-2xl font-medium tabular-nums', tone)}>{value}</p>
-      {hint && <p className="text-xs text-stone-400">{hint}</p>}
+      {hint && <p className="text-xs text-stone-600">{hint}</p>}
     </Card>
   )
 }

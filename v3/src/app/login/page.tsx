@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { LoginForm } from './login-form'
 import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
-import { isSupabaseConfigured } from '@/lib/auth/guards'
+import { isSupabaseConfigured, safeNext } from '@/lib/auth/guards'
 import { Alert } from '@/components/ui/primitives'
 
 export const metadata = { title: 'Sign in · Nerige' }
@@ -16,7 +16,9 @@ export default async function LoginPage({
   const { next } = await searchParams
   // Only same-origin paths survive, so a crafted ?next= cannot turn the sign-in
   // screen into an open redirect.
-  const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : '/'
+  // The same check the sign-in action applies — see safeNext(): a backslash
+  // after the leading slash is read as a protocol-relative URL by the browser.
+  const nextPath = safeNext(next)
 
   // No session yet, so no profile language to read. The browser's own
   // preference is the best available guess and costs the weaver nothing.
@@ -37,7 +39,7 @@ export default async function LoginPage({
         )}
 
         <div className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-          <LoginForm next={safeNext} t={t} />
+          <LoginForm next={nextPath} t={t} />
         </div>
 
         <p className="text-center text-xs text-stone-400">{t.login.byInvitation}</p>

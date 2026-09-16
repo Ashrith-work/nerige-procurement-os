@@ -114,13 +114,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     // sending panel alongside the same cards.
     <div className="mx-auto max-w-2xl space-y-8 pb-10">
       <header className="space-y-2">
-        <Link href="/orders" className="text-sm text-stone-500 underline underline-offset-2">
-          All orders
+        <Link
+          href="/orders"
+          className="inline-flex min-h-11 items-center text-sm text-stone-600 underline underline-offset-2"
+        >
+          Orders
         </Link>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-lg font-medium">{vendor?.display_name ?? 'Order'}</h1>
-            <p className="font-mono text-sm text-stone-500">
+            <p className="font-mono text-sm text-stone-600">
               {vendor?.code} · {order.orderNumber}
             </p>
           </div>
@@ -146,7 +149,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </dl>
 
       {siblings.length > 0 && (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-stone-600">
           Sent at the same time as{' '}
           {siblings.map((s, i) => {
             const code = Array.isArray(s.vendors) ? s.vendors[0]?.code : s.vendors?.code
@@ -174,10 +177,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         {cancellable ? (
           <CancelForm orderId={order.id} vendorName={vendor?.display_name ?? 'The vendor'} />
         ) : (
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-600">
             {order.status === 'cancelled'
               ? 'This order was cancelled.'
-              : 'This order has left the vendor and can no longer be cancelled.'}
+              : 'This order has left the weaver and can no longer be cancelled.'}
           </p>
         )}
       </section>
@@ -198,8 +201,8 @@ function Fact({
 }) {
   return (
     <div className="flex justify-between gap-3">
-      <dt className="text-stone-500">{label}</dt>
-      <dd className={value ? (mono ? 'font-mono text-stone-900' : 'text-stone-900') : 'text-stone-400'}>
+      <dt className="text-stone-600">{label}</dt>
+      <dd className={value ? (mono ? 'font-mono text-stone-900' : 'text-stone-900') : 'text-stone-600'}>
         {value ?? missing ?? '—'}
       </dd>
     </div>

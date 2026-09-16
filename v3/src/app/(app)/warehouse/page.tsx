@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader } from '@/components/ui/primitives'
+import { LinkButton, PageHeader } from '@/components/ui/primitives'
 import { DashboardSection, SectionError, Tile, TileGrid, settle, toneWhen } from '@/components/dashboard/tile'
 import { loadRecentFill, loadRoster, loadTodaySheetStatus } from '@/lib/performance/summary'
 import { formatDay, weekdayInitial } from '@/lib/performance/period'
@@ -49,18 +49,10 @@ export default async function WarehouseHomePage() {
         subtitle={mineOnly ? `Good day, ${user.fullName.split(' ')[0]}.` : 'The warehouse manager’s home, as they see it.'}
         action={
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/intake/new"
-              className="inline-flex min-h-11 items-center rounded-lg border border-stone-300 px-4 text-sm font-medium hover:bg-stone-50"
-            >
-              New saree
-            </Link>
-            <Link
-              href="/warehouse/inward"
-              className="inline-flex min-h-11 items-center rounded-lg border border-stone-300 px-4 text-sm font-medium hover:bg-stone-50"
-            >
-              Receive a parcel
-            </Link>
+            {/* Named for where they land: the second used to say "Receive a
+                parcel" and open a screen headed "Inwarding". */}
+            <LinkButton href="/intake/new">Add a saree</LinkButton>
+            <LinkButton href="/warehouse/inward">Parcels</LinkButton>
           </div>
         }
       />
@@ -131,7 +123,7 @@ export default async function WarehouseHomePage() {
         )}
       </DashboardSection>
 
-      <DashboardSection title={mineOnly ? 'Sarees you submitted' : 'New sarees'}>
+      <DashboardSection title={mineOnly ? 'Sarees you sent in' : 'Sarees being added'}>
         {intake.ok ? (
           <TileGrid>
             <Tile
@@ -154,9 +146,9 @@ export default async function WarehouseHomePage() {
             />
             <Tile
               href="/intake/queue"
-              label="Drafts"
+              label="Part-finished"
               value={intake.value.drafts}
-              hint="Waiting for a master-data value"
+              hint="Waiting for a saree word to be named"
             />
           </TileGrid>
         ) : (

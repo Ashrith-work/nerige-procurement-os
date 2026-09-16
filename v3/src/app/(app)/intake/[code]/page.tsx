@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { requireStaff } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { Alert, Button, Card, PageHeader } from '@/components/ui/primitives'
+import { Alert, Button, Card, LinkButton, PageHeader } from '@/components/ui/primitives'
 import { formatRupees } from '@/lib/intake/pricing'
 import { parseStatusHistory } from '@/lib/intake/history'
 import { STATUS_LABELS, type IntakeStatus } from '@/lib/intake/status'
@@ -15,7 +15,7 @@ import { IntakeStatusBadge } from '../_components/intake-status-badge'
 import { TransitionControls } from '../_components/transition-controls'
 import { resolveIntakeError } from './actions'
 
-export const metadata = { title: 'Saree · Intake · Nerige' }
+export const metadata = { title: 'A saree being added · Nerige' }
 
 interface ErrorRow {
   id: number
@@ -171,11 +171,7 @@ export default async function IntakeDetailPage({ params }: { params: Promise<{ c
       <PageHeader
         title={row.sku ?? `Draft #${code}`}
         subtitle={`Unique Code ${code}`}
-        action={
-          <Link href="/intake/queue" className="text-sm text-stone-600 underline-offset-2 hover:underline">
-            Intake queue
-          </Link>
-        }
+        action={<LinkButton href="/intake/queue">Sarees being added</LinkButton>}
       />
 
       <div className="flex flex-wrap items-start gap-5">
@@ -183,7 +179,7 @@ export default async function IntakeDetailPage({ params }: { params: Promise<{ c
           {image ? (
             <Image src={image} alt={product?.title ?? row.sku ?? ''} fill sizes="128px" className="object-cover" unoptimized />
           ) : (
-            <span className="px-2 text-center text-xs text-stone-400">No photo in the system yet</span>
+            <span className="px-2 text-center text-xs text-stone-600">No photo in the system yet</span>
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-2">
@@ -227,11 +223,14 @@ export default async function IntakeDetailPage({ params }: { params: Promise<{ c
         <ul className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
           {pipeline.map((p) => (
             <li key={p.step} className="flex gap-3 px-4 py-2.5 text-sm">
-              <span aria-hidden className={p.done ? 'text-emerald-600' : 'text-stone-300'}>
+              {/* The dot is decoration; the state is said in words for anyone
+                  who cannot see a colour or a filled circle. */}
+              <span aria-hidden className={p.done ? 'text-emerald-700' : 'text-stone-400'}>
                 {p.done ? '●' : '○'}
               </span>
+              <span className="sr-only">{p.done ? 'Done: ' : 'Not done yet: '}</span>
               <span className="w-44 shrink-0 text-stone-700">{p.step}</span>
-              <span className="min-w-0 break-words text-stone-500">{p.detail}</span>
+              <span className="min-w-0 break-words text-stone-600">{p.detail}</span>
             </li>
           ))}
         </ul>
