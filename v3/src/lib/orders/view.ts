@@ -13,12 +13,16 @@
  * an order she has already accepted.
  */
 
+import { cropForMode, type CropRect } from '@/lib/products/image'
+
 export type OrderStatus = 'issued' | 'accepted' | 'dispatched' | 'received' | 'cancelled'
 export type ReorderReason = 'sold_out' | 'last_piece'
 
 export interface ReferencePhoto {
   sku: string
   imageUrl: string | null
+  /** See RestockLine.crop — the same rule, for a reference photograph. */
+  crop: CropRect
 }
 
 /**
@@ -48,6 +52,18 @@ export interface RestockLine {
    */
   unitsSold: number | null
   tier: number | null
+  /**
+   * How the photograph is framed, and the SECOND deliberate exception to the
+   * snapshot rule.
+   *
+   * The crop belongs to the product, not to the order: it is not part of what
+   * was ordered, it is how the same photograph is shown. Freezing it would mean
+   * correcting a badly framed saree fixed her catalogue and the card she is
+   * sent on WhatsApp while leaving the order screen showing the old framing —
+   * three views of one saree, two of them right. The card route
+   * (api/orders/[id]/cards) already reads it live for exactly this reason.
+   */
+  crop: CropRect
 }
 
 /** "Make me more like these." Nothing comes back with a code on it. */
@@ -80,11 +96,22 @@ export interface RawOrderLine {
   reorder_reason: string | null
   snapshot_title: string | null
   snapshot_image_url: string | null
-  order_line_refs: { sku: string; snapshot_image_url: string | null }[] | null
-  products:
-    | { units_90d: number | null; tier_90: number | null; sales_synced_at: string | null }
-    | { units_90d: number | null; tier_90: number | null; sales_synced_at: string | null }[]
+  order_line_refs:
+    | { sku: string; snapshot_image_url: string | null; products: RawProductFraming | RawProductFraming[] | null }[]
     | null
+  products: RawLineProduct | RawLineProduct[] | null
+}
+
+/** The framing columns, as they come back from an embed. */
+export interface RawProductFraming {
+  crop_json: CropRect | null
+  crop_mode: string | null
+}
+
+export interface RawLineProduct extends RawProductFraming {
+  units_90d: number | null
+  tier_90: number | null
+  sales_synced_at: string | null
 }
 
 export interface RawOrder {
@@ -109,10 +136,21 @@ export const ORDER_SELECT = `
   order_lines (
     id, line_type, sku, brief, quantity, reorder_reason,
     snapshot_title, snapshot_image_url,
-    order_line_refs ( sku, snapshot_image_url ),
-    products ( units_90d, tier_90, sales_synced_at )
+    order_line_refs ( sku, snapshot_image_url, products ( crop_json, crop_mode ) ),
+    products ( units_90d, tier_90, sales_synced_at, crop_json, crop_mode )
   )
 `
+
+/**
+ * The crop a product carries, or the default framing when the product row is
+ * gone — a design deleted from Shopify still has an order against it, and an
+ * uncropped photograph is better than a blank card.
+ */
+function framing(product: RawProductFraming | null | undefined): CropRect {
+  const crop = product?.crop_json
+  if (crop && crop.w > 0 && crop.h > 0) return crop
+  return cropForMode(product?.crop_mode)
+}
 
 export function toVendorOrder(row: RawOrder): VendorOrder {
   const lines = row.order_lines ?? []
@@ -145,6 +183,7 @@ export function toVendorOrder(row: RawOrder): VendorOrder {
           // "this has never sold" rather than "we do not know yet".
           unitsSold: product?.sales_synced_at ? (product.units_90d ?? 0) : null,
           tier: product?.sales_synced_at ? (product.tier_90 ?? null) : null,
+          crop: framing(product),
         }
       }),
 
@@ -157,6 +196,7 @@ export function toVendorOrder(row: RawOrder): VendorOrder {
         references: (l.order_line_refs ?? []).map((r) => ({
           sku: r.sku,
           imageUrl: r.snapshot_image_url,
+          crop: framing(Array.isArray(r.products) ? r.products[0] : r.products),
         })),
       })),
   }

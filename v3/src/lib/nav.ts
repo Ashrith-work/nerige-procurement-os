@@ -41,6 +41,7 @@ export function navFor(role: AppRole): RoleNav {
           { href: '/admin/vendors', label: 'My vendors' },
           { href: '/admin/products', label: 'Products' },
           { href: '/admin/products/unidentified', label: 'To be identified' },
+          { href: '/admin/products/cropping', label: 'Cropping' },
           { href: '/admin/master-data', label: 'Master data' },
           { href: '/admin/signups', label: 'Account requests' },
           { href: '/admin/insights', label: 'Insights' },

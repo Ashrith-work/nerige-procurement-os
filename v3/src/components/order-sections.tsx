@@ -41,6 +41,7 @@ export function RestockCard({
       sku={line.sku}
       title={line.title}
       imageUrl={line.imageUrl}
+      crop={line.crop}
       Photo={Photo}
       footer={<Quantity n={line.quantity} t={t} locale={locale} />}
       // Live rather than snapshotted, on purpose — see RestockLine.unitsSold.
@@ -84,7 +85,7 @@ export function NewDesignCard({
           <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
             {line.references.map((ref) => (
               <li key={ref.sku} className="shrink-0 snap-start">
-                <Photo url={ref.imageUrl} alt={ref.sku} className="h-[150px] w-[115px]" />
+                <Photo url={ref.imageUrl} alt={ref.sku} crop={ref.crop} className="h-[150px] w-[115px]" />
               </li>
             ))}
           </ul>

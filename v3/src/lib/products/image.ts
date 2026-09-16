@@ -61,6 +61,30 @@ const MODE_CROPS: Record<CropMode, CropRect> = {
   none: { x: 0, y: 0, w: 1, h: 1 },
 }
 
+/**
+ * A crop rectangle out of a form field, or null.
+ *
+ * Here rather than beside the action that first needed it, because a `'use
+ * server'` file may export only async functions — everything else in one is
+ * rewritten into a server-action reference for the client bundle. Two screens
+ * now save crops and they must agree on what a valid one is.
+ *
+ * Rounded to four places: a crop is a human dragging a box, not a measurement,
+ * and sixteen decimal places of mouse jitter makes two identical-looking crops
+ * compare as different.
+ */
+export function parseCropRect(raw: string): CropRect | null {
+  if (!raw) return null
+  try {
+    const value = JSON.parse(raw) as Partial<CropRect>
+    if (!isValidCrop(value)) return null
+    const round = (n: number) => Math.round(n * 10000) / 10000
+    return { x: round(value.x!), y: round(value.y!), w: round(value.w!), h: round(value.h!) }
+  } catch {
+    return null
+  }
+}
+
 export function cropForMode(mode: string | null | undefined): CropRect {
   return MODE_CROPS[(mode as CropMode) ?? 'top'] ?? MODE_CROPS.top
 }
