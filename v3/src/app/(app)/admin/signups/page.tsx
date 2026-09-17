@@ -1,7 +1,8 @@
 import { requireAdmin } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
+import { rowsOrNull, rowsOrThrow } from '@/lib/supabase/rows'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { PageHeader, EmptyState, LinkButton } from '@/components/ui/primitives'
+import { Alert, EmptyState, LinkButton, PageHeader } from '@/components/ui/primitives'
 import { toAuthEmail } from '@/lib/auth/user-id'
 import { DecisionRow, type SignupRow } from './decision-row'
 
@@ -24,20 +25,25 @@ export default async function SignupsPage() {
   await requireAdmin()
   const supabase = await createClient()
 
-  const { data: pending } = await supabase
+  const pendingResult = await supabase
     .from('signup_requests')
     .select('id, user_id, full_name, requested_role, vendor_code, phone, note, created_at')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  const { data: decided } = await supabase
+  const decidedResult = await supabase
     .from('signup_requests')
     .select('id, user_id, full_name, requested_role, status, decided_at, decision_note')
     .neq('status', 'pending')
     .order('decided_at', { ascending: false })
     .limit(25)
 
-  const requests = pending ?? []
+  // The queue this screen exists for: a failure throws rather than showing
+  // "Nothing waiting", which would tell an owner there is nobody to approve
+  // while somebody waits for a login.
+  const requests = rowsOrThrow(pendingResult, 'the account requests')
+  // History. Worth losing rather than the screen, but never shown as "none".
+  const decided = rowsOrNull(decidedResult)
 
   // Which of these identities already has a login. Needs the service role: the
   // answer lives in auth.users, which no policy exposes and nothing else in the
@@ -52,8 +58,13 @@ export default async function SignupsPage() {
   const existing = new Set<string>()
   if (emails.length > 0) {
     const service = createAdminClient()
-    const { data: profiles } = await service.from('app_users').select('email').in('email', emails)
-    for (const p of profiles ?? []) if (p.email) existing.add(String(p.email).toLowerCase())
+    const profiles = await service.from('app_users').select('email').in('email', emails)
+    // Throws: this is the check that stops an approval being pressed on an
+    // account that already exists, and a silent failure here turns the warning
+    // off exactly when it is needed.
+    for (const p of rowsOrThrow(profiles, 'the existing logins')) {
+      if (p.email) existing.add(String(p.email).toLowerCase())
+    }
   }
 
   const rows: SignupRow[] = requests.map((r) => ({
@@ -91,6 +102,12 @@ export default async function SignupsPage() {
             <DecisionRow key={r.id} request={r} />
           ))}
         </ul>
+      )}
+
+      {decided === null && (
+        <Alert tone="error">
+          The list of recently decided requests did not load. Anything waiting above is correct.
+        </Alert>
       )}
 
       {(decided ?? []).length > 0 && (

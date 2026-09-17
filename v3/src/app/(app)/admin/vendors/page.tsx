@@ -4,7 +4,8 @@ import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { LOCALE_NAMES, type Locale } from '@/lib/i18n'
 import { toDisplayUserId } from '@/lib/auth/user-id'
-import { PageHeader, EmptyState, LinkButton } from '@/components/ui/primitives'
+import { PageHeader, EmptyState, LinkButton, Alert } from '@/components/ui/primitives'
+import { rowsOrNull, rowsOrThrow } from '@/lib/supabase/rows'
 
 export const metadata = { title: 'Weavers · Nerige' }
 
@@ -36,7 +37,7 @@ export default async function AdminVendorsPage() {
   // directly rather than off `vendor_collections` — that view groups by
   // collection and drops rows where it is null, so it would quietly understate
   // any weaver with uncategorised designs.
-  const [{ data: vendorRows }, { data: summaryRows }, { data: userRows }] = await Promise.all([
+  const [vendorResult, summaryResult, userResult] = await Promise.all([
     supabase
       .from('vendors')
       .select('id, code, display_name, default_locale, status')
@@ -49,7 +50,16 @@ export default async function AdminVendorsPage() {
       .is('deleted_at', null),
   ])
 
-  const vendors = (vendorRows ?? []) as VendorRow[]
+  // The list this screen IS: a failure throws rather than rendering "No weavers
+  // yet", which would be a false statement with a button under it. The other two
+  // reads only decorate the rows, so they degrade to "not loaded" instead of
+  // taking the screen down with them — and never to a zero, which would read as
+  // a weaver with no designs.
+  const vendors = rowsOrThrow(vendorResult, 'the weavers') as VendorRow[]
+  const summaryRows = rowsOrNull(summaryResult)
+  const userRows = rowsOrNull(userResult)
+  const countsMissing = summaryRows === null
+  const loginsMissing = userRows === null
 
   const designs = new Map<string, number>()
   const openOrders = new Map<string, number>()
@@ -85,6 +95,17 @@ export default async function AdminVendorsPage() {
           </div>
         }
       />
+
+      {(countsMissing || loginsMissing) && (
+        <Alert tone="error">
+          {countsMissing && loginsMissing
+            ? 'The design counts and the login details did not load, and show as —. The weavers themselves are correct.'
+            : countsMissing
+              ? 'The design and open-order counts did not load, and show as —. Everything else on this screen is correct.'
+              : 'The login details did not load, and show as —. Everything else on this screen is correct.'}{' '}
+          Reload to try again.
+        </Alert>
+      )}
 
       {vendors.length === 0 ? (
         <EmptyState
@@ -134,14 +155,22 @@ export default async function AdminVendorsPage() {
                     <Td className="font-mono text-stone-700">{v.code}</Td>
                     <Td>{LOCALE_NAMES[v.default_locale as Locale] ?? v.default_locale}</Td>
                     <Td className="font-mono text-xs text-stone-600">
-                      {login?.email ? (toDisplayUserId(login.email) ?? login.email) : 'No login yet'}
+                      {loginsMissing
+                        ? '—'
+                        : login?.email
+                          ? (toDisplayUserId(login.email) ?? login.email)
+                          : 'No login yet'}
                     </Td>
                     <Td className="text-right tabular-nums">
-                      {(designs.get(v.id) ?? 0).toLocaleString('en-IN')}
+                      {countsMissing ? '—' : (designs.get(v.id) ?? 0).toLocaleString('en-IN')}
                     </Td>
-                    <Td className="text-right tabular-nums">{openOrders.get(v.id) ?? 0}</Td>
+                    <Td className="text-right tabular-nums">
+                      {countsMissing ? '—' : (openOrders.get(v.id) ?? 0)}
+                    </Td>
                     <Td className="text-stone-600">
-                      {login?.last_seen_at ? (
+                      {loginsMissing ? (
+                        '—'
+                      ) : login?.last_seen_at ? (
                         format(new Date(login.last_seen_at), 'd MMM yyyy')
                       ) : (
                         // Not "—". A weaver who has never signed in has seen

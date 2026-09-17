@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { requireProcurement } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
+import { rowsOrThrow } from '@/lib/supabase/rows'
 import { EmptyState, LinkButton, PageHeader, StatusBadge } from '@/components/ui/primitives'
 
 export const metadata = { title: 'Orders · Nerige' }
@@ -39,7 +40,7 @@ export default async function OrdersPage() {
   await requireProcurement()
   const supabase = await createClient()
 
-  const { data, count } = await supabase
+  const result = await supabase
     .from('orders')
     .select(
       'id, order_number, status, issued_at, promised_date, dispatched_at, batch_id, vendors(code, display_name), order_lines(count)',
@@ -48,7 +49,10 @@ export default async function OrdersPage() {
     .order('issued_at', { ascending: false })
     .limit(RECENT_LIMIT)
 
-  const orders = (data ?? []) as unknown as Row[]
+  // Throws rather than falling through to the empty state: "Nothing sent yet",
+  // with a button offering to send the first one, is a lie when the query failed.
+  const orders = rowsOrThrow(result, 'the orders') as unknown as Row[]
+  const count = result.count
 
   if (orders.length === 0) {
     return (
