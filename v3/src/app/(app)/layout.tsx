@@ -163,12 +163,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* Everything else this workspace holds. The header carries the first
-            five; the panel carries the rest, so neither is a wall. */}
-        {(active?.sections.length ?? 0) > 5 && (
+            five; the panel carries the rest, so neither is a wall.
+            "All screens" is always last, whatever the workspace: a shorter menu
+            is only an improvement while the long one is still somewhere, and it
+            is the answer to "where has Insights gone". */}
+        {active && (
           <SidePanel
-            heading={active?.name ?? user.fullName}
+            heading={active.name}
             subheading={user.fullName}
-            items={(active?.sections ?? []).slice(5).map((s) => ({ href: s.href, label: s.label }))}
+            items={[
+              ...active.sections.slice(5).map((s) => ({ href: s.href, label: s.label })),
+              { href: '/all', label: 'All screens' },
+            ]}
           />
         )}
 

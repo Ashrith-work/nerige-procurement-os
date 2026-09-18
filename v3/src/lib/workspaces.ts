@@ -45,6 +45,7 @@ const RECEIVING: readonly AppRole[] = ['admin', 'procurement_head', 'warehouse_m
 
 export const SECTIONS: readonly Section[] = [
   // The three dashboards, which are sections like any other.
+  { key: 'all', label: 'All screens', href: '/all', blurb: 'Everything your account can open', roles: STAFF },
   { key: 'today', label: 'Today', href: '/dashboard', blurb: 'What is waiting on you now', roles: STAFF },
   { key: 'work', label: 'In progress', href: '/work', blurb: 'Orders, sarees and parcels in flight', roles: RECEIVING },
   { key: 'numbers', label: 'Numbers', href: '/numbers', blurb: 'Every analysis, in one place', roles: INTERNAL },
@@ -73,7 +74,10 @@ export const SECTIONS: readonly Section[] = [
   // Everything else.
   { key: 'lookup', label: 'Look something up', href: '/lookup', blurb: 'Stock and orders for any saree', roles: STAFF },
   { key: 'products', label: 'All designs', href: '/admin/products', blurb: 'The whole catalogue', roles: INTERNAL },
-  { key: 'insights', label: 'Sales analysis', href: '/admin/insights', blurb: 'What sold, by collection, colour, weaver', roles: INTERNAL },
+  // Called Insights because that is what it has always been called here and
+  // what people ask for by name. A rename that makes somebody hunt for a screen
+  // they used yesterday costs more than any improvement in the word.
+  { key: 'insights', label: 'Insights', href: '/admin/insights', blurb: 'What sold, by collection, colour and weaver', roles: INTERNAL },
   { key: 'signups', label: 'Account requests', href: '/admin/signups', blurb: 'People asking for a login', roles: ['admin'] },
   { key: 'settings', label: 'Settings', href: '/admin/settings', blurb: 'Sync, integrations, tutorials', roles: INTERNAL },
   { key: 'profile', label: 'My profile', href: '/admin/profile', blurb: 'Your name and language', roles: INTERNAL },
@@ -109,7 +113,11 @@ export const TEMPLATES: readonly WorkspaceTemplate[] = [
     key: 'ordering',
     name: 'Ordering sarees',
     blurb: 'Decide what to make again and send it to the weavers.',
-    sections: ['today', 'order-flow', 'reorder', 'orders', 'work', 'weavers', 'lookup'],
+    // Numbers and Insights belong to this job, not only to the reading-the-
+    // numbers job: deciding what to have made again IS reading what sold. They
+    // were left out of the first draft and Pooja went looking for Insights the
+    // same day.
+    sections: ['today', 'order-flow', 'reorder', 'orders', 'work', 'numbers', 'insights', 'weavers', 'lookup'],
     roles: ['admin', 'procurement_head'],
   },
   {
