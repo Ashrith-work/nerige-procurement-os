@@ -9,6 +9,7 @@ import { readImpersonation } from '@/lib/auth/impersonation'
 import { ViewAsBanner } from '@/components/dev/view-as-banner'
 import { getWorkspaceContext } from '@/lib/workspaces.server'
 import { WorkspaceSwitcher } from '@/components/workspace-switcher'
+import { Logo } from '@/components/brand/logo'
 import { signOut } from './actions'
 
 /**
@@ -46,9 +47,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     return (
       <div className="flex min-h-dvh flex-col bg-white text-stone-900">
         <header className="no-print border-b border-stone-200 bg-stone-900 text-white">
-          <div className="flex w-full items-center gap-3 px-4 py-3">
-            <Link href="/dev" className="shrink-0 font-medium tracking-tight">
-              {t.login.brand} <span className="text-stone-400">· developer</span>
+          {/* py-2.5, not py-3: the mark is 48px tall against the 44px touch
+              targets beside it, so trimming 2px a side keeps the header at
+              exactly the 68px it was before the logo arrived. */}
+          <div className="flex w-full items-center gap-3 px-4 py-2.5 lg:gap-5">
+            <Link href="/dev" className="flex shrink-0 items-center gap-2">
+              {/* The one dark bar in the application, so the one place the
+                  white-script variant is used. */}
+              <Logo variant="compact" tone="inverse" />
+              <span className="font-heading text-sm tracking-brand text-stone-400">
+                · developer
+              </span>
             </Link>
             <span className="flex-1" />
             <span className="hidden text-sm text-stone-300 sm:block">{user.fullName}</span>
@@ -83,12 +92,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-dvh flex-col bg-white text-stone-900">
         {viewAsBanner}
         <header className="no-print border-b border-stone-200">
-          <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
-            <Link href="/" className="shrink-0 font-medium tracking-tight">
-              {t.login.brand}
+          {/* The weaver's header, on a 380px phone. The mark is 72px of that,
+              and everything after it is allowed to scroll rather than push it
+              narrower — she recognises the shop by this, and a squeezed
+              two-line script is not recognisable. py-2.5 against a 48px mark
+              holds the header at the 68px it was, so the photograph below it
+              starts exactly where it always did. */}
+          <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2.5 lg:gap-5">
+            <Link href="/" className="flex shrink-0 items-center">
+              <Logo variant="compact" priority />
             </Link>
 
-            <nav className="flex-1 overflow-x-auto">
+            <nav className="min-w-0 flex-1 overflow-x-auto">
               <ul className="flex items-center gap-1">
                 <NavLink href="/portal" label={t.nav.myOrders} />
                 <NavLink href="/portal/catalogue" label={t.nav.myDesigns} />
@@ -128,14 +143,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {viewAsBanner}
 
       <header className="no-print border-b border-stone-200">
-        <div className="flex w-full items-center gap-3 px-4 py-3">
-          <Link href="/" className="shrink-0 font-medium tracking-tight">
-            {t.login.brand}
+        <div className="flex w-full items-center gap-3 px-4 py-2.5 lg:gap-5">
+          <Link href="/" className="flex shrink-0 items-center">
+            <Logo variant="compact" priority />
           </Link>
 
           {/* The workspace's own sections, in the order the job runs in. Four
               or five destinations, not fourteen. */}
-          <nav className="flex-1 overflow-x-auto" aria-label={active?.name ?? 'Sections'}>
+          <nav className="min-w-0 flex-1 overflow-x-auto" aria-label={active?.name ?? 'Sections'}>
             <ul className="flex items-center gap-1">
               {(active?.sections ?? []).slice(0, 5).map((item) => (
                 <NavLink key={item.key} href={item.href} label={item.label} />

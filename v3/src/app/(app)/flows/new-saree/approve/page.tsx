@@ -9,7 +9,7 @@ import { IntakeStatusBadge } from '@/app/(app)/intake/_components/intake-status-
 import { TransitionControls } from '@/app/(app)/intake/_components/transition-controls'
 import { loadFlowSaree } from '../_lib/saree'
 
-export const metadata = { title: 'Send for approval · Nerige' }
+export const metadata = { title: 'Send for approval' }
 
 /**
  * Step 4, and the end of the flow: handing the saree to whoever signs it off.

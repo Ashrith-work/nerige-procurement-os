@@ -9,7 +9,7 @@ import { canSubmitIntake } from '@/lib/intake/transitions'
 import { INTAKE_LIST_COLUMNS, loadIntakeContext, loadPeople, loadVocabulary, vocabLabel, type IntakeListRow } from '../_lib/data'
 import { IntakeStatusBadge } from '../_components/intake-status-badge'
 
-export const metadata = { title: 'Sarees being added · Nerige' }
+export const metadata = { title: 'Sarees being added' }
 
 const LIMIT = 200
 

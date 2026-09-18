@@ -4,7 +4,7 @@ import { FlowStepper } from '@/components/flow/stepper'
 import { runningFlow, withFlow } from '@/components/flow/flows'
 import { Review } from './review'
 
-export const metadata = { title: 'Review · Nerige' }
+export const metadata = { title: 'Review' }
 
 export default async function ReviewPage({
   searchParams,

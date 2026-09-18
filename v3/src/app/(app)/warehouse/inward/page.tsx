@@ -12,7 +12,7 @@ import {
 } from '@/lib/inwarding/view'
 import { daysAgoIso, todayInIndia } from '@/lib/inwarding/summary'
 
-export const metadata = { title: 'Parcels · Nerige' }
+export const metadata = { title: 'Parcels' }
 
 /** How far back "received recently" reaches. Two weeks covers a late second parcel. */
 const RECENT_DAYS = 14

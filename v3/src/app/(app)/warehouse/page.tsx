@@ -9,7 +9,7 @@ import { loadIntakeCounts } from '@/lib/intake/summary'
 import { loadInwardCounts } from '@/lib/inwarding/summary'
 import { cn } from '@/lib/utils'
 
-export const metadata = { title: 'Warehouse · Nerige' }
+export const metadata = { title: 'Warehouse' }
 
 /**
  * The warehouse manager's home.

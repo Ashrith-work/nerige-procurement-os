@@ -10,7 +10,7 @@ import { StockLine } from '@/components/stock-line'
 import { resolveProductImage, type CropRect } from '@/lib/products/image'
 import { todayInIndia } from '@/lib/inwarding/summary'
 
-export const metadata = { title: 'One saree · Nerige' }
+export const metadata = { title: 'One saree' }
 
 /** The shape `public.lookup_product()` returns. No cost, by construction. */
 interface LookupDetail {

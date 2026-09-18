@@ -8,7 +8,7 @@ import { PageHeader, Card, Button, LinkButton, Select, Field, StatusBadge } from
 import { setVendorLocale, startImpersonating } from '../actions'
 import { CredentialPanel } from './credential-panel'
 
-export const metadata = { title: 'One weaver · Nerige' }
+export const metadata = { title: 'One weaver' }
 
 interface Login {
   user_id: string

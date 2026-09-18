@@ -7,7 +7,7 @@ import { withFlow } from '@/components/flow/flows'
 import { IntakeStatusBadge } from '@/app/(app)/intake/_components/intake-status-badge'
 import { loadFlowSaree, splitSku } from '../_lib/saree'
 
-export const metadata = { title: 'Write the code · Nerige' }
+export const metadata = { title: 'Write the code' }
 
 /**
  * Step 2: the number that goes on the fabric.

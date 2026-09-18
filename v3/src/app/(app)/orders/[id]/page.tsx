@@ -11,7 +11,7 @@ import { CancelForm } from './cancel-form'
 import { DeliveryPanel, type Delivery } from './delivery-panel'
 import { ShareCards, type ShareCardLine } from './share-cards'
 
-export const metadata = { title: 'Order · Nerige' }
+export const metadata = { title: 'Order' }
 
 /**
  * One order, from Pooja's side.

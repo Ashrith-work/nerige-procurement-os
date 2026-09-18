@@ -66,6 +66,9 @@ export const SECTIONS: readonly Section[] = [
   { key: 'cropping', label: 'Cropping', href: '/admin/products/cropping', blurb: 'How each photograph is framed for her', roles: ['admin'] },
 
   // The warehouse.
+  // Procurement reads the day sheet but never writes it: "did that saree come
+  // back" is asked on the phone, and the answer is on this page.
+  { key: 'day-sheet', label: 'Day sheet', href: '/warehouse/day', blurb: 'Sarees out of the building, orders, and the day’s work', roles: ['admin', 'warehouse_manager', 'procurement_head'] },
   { key: 'receive-flow', label: 'Receive a parcel', href: '/flows/receive', blurb: 'Record what actually arrived', roles: RECEIVING },
   { key: 'inward', label: 'Parcels', href: '/warehouse/inward', blurb: 'On the way, part-received, done', roles: RECEIVING },
   { key: 'staff', label: 'Staff sheet', href: '/warehouse/staff', blurb: 'The floor staff’s day, person by person', roles: WAREHOUSE },
@@ -98,6 +101,13 @@ export interface WorkspaceTemplate {
   sections: readonly string[]
   /** Which roles are offered this by default. */
   roles: readonly AppRole[]
+  /**
+   * Roles this opens FIRST for, before anybody has chosen. Without it the
+   * default is simply the first template a role is offered, which put a
+   * warehouse manager into "New sarees" — a job he does occasionally — rather
+   * than the warehouse, which is the reason he signs in at all.
+   */
+  defaultFor?: readonly AppRole[]
 }
 
 /**
@@ -119,6 +129,7 @@ export const TEMPLATES: readonly WorkspaceTemplate[] = [
     // same day.
     sections: ['today', 'order-flow', 'reorder', 'orders', 'work', 'numbers', 'insights', 'weavers', 'lookup'],
     roles: ['admin', 'procurement_head'],
+    defaultFor: ['admin', 'procurement_head'],
   },
   {
     key: 'new-sarees',
@@ -131,8 +142,12 @@ export const TEMPLATES: readonly WorkspaceTemplate[] = [
     key: 'warehouse',
     name: 'The warehouse',
     blurb: 'The floor staff’s day and the parcels arriving from weavers.',
-    sections: ['today', 'staff', 'receive-flow', 'inward', 'new-saree', 'intake', 'shooting', 'lookup'],
+    // The day sheet first, and therefore the screen this workspace opens on: it
+    // is the one page the warehouse returns to all day, and the first question
+    // it asks — is anything still out of the building — is the manager's own.
+    sections: ['day-sheet', 'today', 'staff', 'receive-flow', 'inward', 'new-saree', 'intake', 'shooting', 'lookup'],
     roles: ['admin', 'warehouse_manager'],
+    defaultFor: ['warehouse_manager'],
   },
   {
     key: 'numbers',
@@ -147,6 +162,7 @@ export const TEMPLATES: readonly WorkspaceTemplate[] = [
     blurb: 'Look up any saree: stock, sales and what is on its way.',
     sections: ['lookup', 'intake'],
     roles: ['admin', 'customer_support'],
+    defaultFor: ['customer_support'],
   },
   {
     key: 'running-it',
@@ -203,6 +219,9 @@ export function availableSections(role: AppRole): Section[] {
  */
 export function resolveWorkspaces(role: AppRole, rows: readonly WorkspaceRow[]): Workspace[] {
   const byKey = new Map(rows.map((r) => [r.key, r]))
+  // Somebody's own choice always wins; `defaultFor` only decides where a person
+  // who has never opened the switcher lands.
+  const chosenDefault = rows.some((r) => r.is_default && !r.hidden)
 
   const fromTemplates = TEMPLATES.filter((t) => t.roles.includes(role))
     .filter((t) => !byKey.get(t.key)?.hidden)
@@ -213,7 +232,7 @@ export function resolveWorkspaces(role: AppRole, rows: readonly WorkspaceRow[]):
         name: row?.name ?? t.name,
         blurb: t.blurb,
         sections: sectionsFor(row?.sections ?? t.sections, role),
-        isDefault: row?.is_default ?? false,
+        isDefault: row?.is_default ?? (!chosenDefault && (t.defaultFor?.includes(role) ?? false)),
         custom: false,
         sort: row?.sort ?? TEMPLATES.indexOf(t),
       }

@@ -3,11 +3,22 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getLocale } from 'next-intl/server'
 import { getSessionUser } from '@/lib/auth/session'
 import { MESSAGES, isLocale } from '@/lib/i18n'
+import { brandFontClass } from '@/lib/fonts'
 import './globals.css'
 
+/**
+ * The tab, and what a bookmark of any screen here is called.
+ *
+ * The template means no page repeats the business name: a screen says
+ * `title: 'Reorder'` and the tab reads "Reorder · Nerige Story". `icon.png` and
+ * `apple-icon.png` sit beside this file and Next.js links them itself.
+ */
 export const metadata: Metadata = {
-  title: 'Nerige',
-  description: 'Vendor portal',
+  title: {
+    default: 'Nerige Story',
+    template: '%s · Nerige Story',
+  },
+  description: 'Nerige Story operations — ordering, the warehouse and the numbers.',
 }
 
 export const viewport: Viewport = {
@@ -40,7 +51,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = MESSAGES[locale]
 
   return (
-    <html lang={locale}>
+    // brandFontClass puts --font-montserrat and --font-nunito-sans on the root,
+    // where globals.css picks them up as --font-heading and --font-body.
+    <html lang={locale} className={brandFontClass}>
       <head>
         {/*
          * Every photograph in this application comes from the Shopify CDN, and

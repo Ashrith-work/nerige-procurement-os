@@ -16,7 +16,7 @@ import {
 import { IntakeStatusBadge } from '../../intake/_components/intake-status-badge'
 import { TransitionControls } from '../../intake/_components/transition-controls'
 
-export const metadata = { title: 'Shooting · Nerige' }
+export const metadata = { title: 'Shooting' }
 
 const LIMIT = 300
 

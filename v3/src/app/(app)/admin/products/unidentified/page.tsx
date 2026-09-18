@@ -4,7 +4,7 @@ import { PageHeader, EmptyState, LinkButton } from '@/components/ui/primitives'
 import { resolveProductImage } from '@/lib/products/image'
 import { IdentifyRow, type UnidentifiedProduct, type VendorOption } from './identify-row'
 
-export const metadata = { title: 'Whose saree is this · Nerige' }
+export const metadata = { title: 'Whose saree is this' }
 
 const PAGE_SIZE = 50
 

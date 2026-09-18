@@ -1,8 +1,9 @@
 import { SignupForm } from './signup-form'
 import { isSupabaseConfigured } from '@/lib/auth/guards'
 import { Alert } from '@/components/ui/primitives'
+import { Logo } from '@/components/brand/logo'
 
-export const metadata = { title: 'Request an account · Nerige' }
+export const metadata = { title: 'Request an account' }
 
 /**
  * The one page in this application a stranger may open.
@@ -18,8 +19,10 @@ export default function SignupPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-stone-50 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
-        <header className="space-y-1 text-center">
-          <h1 className="text-xl font-medium tracking-tight text-stone-900">Nerige</h1>
+        <header className="space-y-3 text-center">
+          <h1 className="flex justify-center">
+            <Logo variant="wordmark" priority />
+          </h1>
           <p className="text-sm text-stone-500">Request an account</p>
         </header>
 

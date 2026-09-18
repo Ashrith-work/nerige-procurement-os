@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { Button } from '@/components/ui/primitives'
+import { Logo } from '@/components/brand/logo'
 import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
 import { signOut } from '@/app/(app)/actions'
 
@@ -25,6 +26,12 @@ export default async function AuthErrorPage({
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="max-w-sm space-y-3 text-center">
+        {/* Somebody who lands here is bounced out of a session and is entitled
+            to know whose door they are standing at. The heading is the
+            problem, not the name, so the mark carries the naming. */}
+        <div className="flex justify-center pb-2">
+          <Logo variant="wordmark" />
+        </div>
         <h1 className="text-lg font-medium">{t.cannotSignIn}</h1>
         <p className="text-sm text-stone-500">{reasons[reason ?? ''] ?? t.somethingWrong}</p>
 

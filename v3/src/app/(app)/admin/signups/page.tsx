@@ -6,7 +6,7 @@ import { Alert, EmptyState, LinkButton, PageHeader } from '@/components/ui/primi
 import { toAuthEmail } from '@/lib/auth/user-id'
 import { DecisionRow, type SignupRow } from './decision-row'
 
-export const metadata = { title: 'Account requests · Nerige' }
+export const metadata = { title: 'Account requests' }
 
 /**
  * Who has asked for a login, and the decision only the owner can make.

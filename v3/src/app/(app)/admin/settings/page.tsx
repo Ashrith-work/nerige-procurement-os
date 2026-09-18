@@ -6,7 +6,7 @@ import { TutorialEditor, type TutorialRow } from './tutorial-editor'
 import { SyncPanel } from './sync-panel'
 import { IntegrationsPanel } from './integrations-panel'
 
-export const metadata = { title: 'Settings · Nerige' }
+export const metadata = { title: 'Settings' }
 
 export default async function AdminSettingsPage() {
   await requireProcurement()

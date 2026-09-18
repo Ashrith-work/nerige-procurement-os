@@ -342,6 +342,18 @@ export async function requireStaffRecorder(): Promise<SessionUser> {
   return requireRole('admin', 'warehouse_manager')
 }
 
+/**
+ * Who keeps the warehouse day sheet. Mirrors `app.can_record_day()`.
+ *
+ * The same pair as the staff sheet, and for the same reason: the manager keeps
+ * the record and the owner may correct it. Reading it is wider — procurement
+ * and support are asked "did that saree come back" on the phone — so the page
+ * itself is guarded by `requireStaff()` and only the writes come through here.
+ */
+export async function requireDayRecorder(): Promise<SessionUser> {
+  return requireRole('admin', 'warehouse_manager')
+}
+
 /** Who reviews the floor staff's attendance sheet: the founders. */
 export async function requireStaffReview(): Promise<SessionUser> {
   return requireRole('admin')

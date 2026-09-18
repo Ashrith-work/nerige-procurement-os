@@ -7,7 +7,7 @@ import { Photo } from '@/components/design-card'
 import { StockLine } from '@/components/stock-line'
 import { resolveProductImage, type CropRect } from '@/lib/products/image'
 
-export const metadata = { title: 'Look something up · Nerige' }
+export const metadata = { title: 'Look something up' }
 
 /** A row of `public.lookup_products()`. Named columns only — there is no cost. */
 interface LookupRow {

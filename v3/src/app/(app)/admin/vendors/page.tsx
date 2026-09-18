@@ -7,7 +7,7 @@ import { toDisplayUserId } from '@/lib/auth/user-id'
 import { PageHeader, EmptyState, LinkButton, Alert } from '@/components/ui/primitives'
 import { rowsOrNull, rowsOrThrow } from '@/lib/supabase/rows'
 
-export const metadata = { title: 'Weavers · Nerige' }
+export const metadata = { title: 'Weavers' }
 
 /**
  * Every weaver Nerige buys from, on one screen.

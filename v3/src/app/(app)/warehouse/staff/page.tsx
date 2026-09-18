@@ -12,7 +12,7 @@ import {
 import { SheetScreen, type SheetPerson } from './sheet-screen'
 import { Roster } from './roster'
 
-export const metadata = { title: 'Staff sheet · Nerige' }
+export const metadata = { title: 'Staff sheet' }
 
 /** Resolved outside the component body: the purity rule forbids reading the clock in render. */
 function resolveDate(requested: string | undefined): { date: string; today: string; clamped: boolean } {

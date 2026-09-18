@@ -15,7 +15,7 @@ import { IntakeStatusBadge } from '../_components/intake-status-badge'
 import { TransitionControls } from '../_components/transition-controls'
 import { resolveIntakeError } from './actions'
 
-export const metadata = { title: 'A saree being added · Nerige' }
+export const metadata = { title: 'A saree being added' }
 
 interface ErrorRow {
   id: number

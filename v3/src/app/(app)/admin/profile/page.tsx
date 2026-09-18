@@ -5,7 +5,7 @@ import { PageHeader, Card } from '@/components/ui/primitives'
 import { LanguagePicker } from '@/components/language-picker'
 import { toDisplayUserId } from '@/lib/auth/user-id'
 
-export const metadata = { title: 'My profile · Nerige' }
+export const metadata = { title: 'My profile' }
 
 /**
  * What each role is called to the person holding it. The page used to say

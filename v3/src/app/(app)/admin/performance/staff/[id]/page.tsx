@@ -9,7 +9,7 @@ import { formatDay, formatLongDay, resolvePeriod, todayInWarehouse } from '@/lib
 import { PeriodPicker, periodQuery } from '../../period-picker'
 import { ATTENDANCE_TONE, attendanceLabel } from '../../cells'
 
-export const metadata = { title: 'Staff member · Nerige' }
+export const metadata = { title: 'Staff member' }
 
 function currentPeriod(params: { preset?: string; from?: string; to?: string }) {
   const today = todayInWarehouse()

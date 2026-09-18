@@ -8,7 +8,7 @@ import { loadOrderPipeline, type PipelineStage } from '@/lib/dashboards/pipeline
 import { loadIntakeCounts } from '@/lib/intake/summary'
 import { loadInwardCounts } from '@/lib/inwarding/summary'
 
-export const metadata = { title: 'In progress · Nerige' }
+export const metadata = { title: 'In progress' }
 
 /**
  * In progress: what is in flight, and whose turn it is.

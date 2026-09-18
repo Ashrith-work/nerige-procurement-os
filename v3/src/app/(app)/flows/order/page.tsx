@@ -5,7 +5,7 @@ import { EmptyState, PageHeader } from '@/components/ui/primitives'
 import { FlowStepper } from '@/components/flow/stepper'
 import { withFlow } from '@/components/flow/flows'
 
-export const metadata = { title: 'Order sarees · Nerige' }
+export const metadata = { title: 'Order sarees' }
 
 /** An order that has left here and not come back: the weaver still owes pieces. */
 const OPEN_STATUSES = ['issued', 'accepted', 'dispatched']

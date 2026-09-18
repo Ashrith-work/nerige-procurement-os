@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { rowsOrThrow } from '@/lib/supabase/rows'
 import { EmptyState, LinkButton, PageHeader, StatusBadge } from '@/components/ui/primitives'
 
-export const metadata = { title: 'Orders · Nerige' }
+export const metadata = { title: 'Orders' }
 
 /**
  * Roughly six months of Pooja's volume. Named rather than silent: if the list

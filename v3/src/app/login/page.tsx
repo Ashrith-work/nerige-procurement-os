@@ -4,8 +4,9 @@ import { LoginForm } from './login-form'
 import { getDictionary, localeFromAcceptLanguage } from '@/lib/i18n'
 import { isSupabaseConfigured, safeNext } from '@/lib/auth/guards'
 import { Alert } from '@/components/ui/primitives'
+import { Logo } from '@/components/brand/logo'
 
-export const metadata = { title: 'Sign in · Nerige' }
+export const metadata = { title: 'Sign in' }
 
 export default async function LoginPage({
   searchParams,
@@ -27,8 +28,14 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-dvh items-center justify-center bg-stone-50 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
-        <header className="text-center">
-          <h1 className="text-xl font-medium tracking-tight text-stone-900">{t.login.brand}</h1>
+        {/* The mark, at the one size on these screens where the script is
+            comfortably readable rather than merely present. It is the only
+            naming of the business on this page, so its alt text *is* the
+            heading — no second sr-only copy of the name beside it. */}
+        <header className="flex justify-center">
+          <h1>
+            <Logo variant="wordmark" priority />
+          </h1>
         </header>
 
         {!isSupabaseConfigured() && (

@@ -8,7 +8,7 @@ import { withFlow } from '@/components/flow/flows'
 import { INWARD_ORDER_SELECT, toInwardOrder, type RawInwardOrder } from '@/lib/inwarding/view'
 import { todayInIndia } from '@/lib/inwarding/summary'
 
-export const metadata = { title: 'Receive a parcel · Nerige' }
+export const metadata = { title: 'Receive a parcel' }
 
 /**
  * Step 1 of receiving: which order the box in front of you belongs to.

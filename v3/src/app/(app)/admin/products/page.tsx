@@ -13,7 +13,7 @@ import {
 import { SellThroughBadge } from '@/components/sell-through-badge'
 import { StockBadge } from '@/components/stock-badge'
 
-export const metadata = { title: 'All designs · Nerige' }
+export const metadata = { title: 'All designs' }
 
 const PAGE_SIZE = 60
 

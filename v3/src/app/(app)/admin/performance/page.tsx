@@ -14,7 +14,7 @@ import {
 import { PeriodPicker, periodQuery } from './period-picker'
 import { GridCell, Legend } from './cells'
 
-export const metadata = { title: 'Staff performance · Nerige' }
+export const metadata = { title: 'Staff performance' }
 
 function currentPeriod(params: { preset?: string; from?: string; to?: string }) {
   const today = todayInWarehouse()

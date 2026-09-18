@@ -28,9 +28,16 @@ export function NavLink({ href, label }: { href: string; label: string }) {
         href={href}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'block min-h-11 rounded-lg px-3 py-2.5 text-sm whitespace-nowrap',
+          // font-heading: the storefront sets its own navigation in Montserrat
+          // at 0.05em, and this is the one row of the application that is
+          // reading-the-shop rather than reading-the-data.
+          'font-heading tracking-brand block min-h-11 rounded-full px-3.5 py-2.5 text-sm whitespace-nowrap',
           active
-            ? 'bg-stone-100 font-medium text-stone-900'
+            // Blush fill from the storefront's own section scheme, with a
+            // coral hairline. The brand accent is 1.88:1 on white and could
+            // never be the only signal — weight, fill and aria-current already
+            // carry the state, and the coral only reinforces it.
+            ? 'bg-brand-accent-soft ring-brand-accent text-brand font-medium ring-1 ring-inset'
             : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900',
         )}
       >

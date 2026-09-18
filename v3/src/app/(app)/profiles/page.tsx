@@ -8,7 +8,7 @@ import {
 } from '@/lib/workspaces'
 import { deleteWorkspace, makeDefault, renameWorkspace, saveWorkspace, setHidden } from './actions'
 
-export const metadata = { title: 'Workspaces · Nerige' }
+export const metadata = { title: 'Workspaces' }
 
 /**
  * Managing your own workspaces.

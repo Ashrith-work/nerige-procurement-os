@@ -52,9 +52,11 @@ export function SidePanel({ items, heading, subheading }: {
               href={item.href}
               aria-current={isActive(item.href) ? 'page' : undefined}
               className={cn(
-                'block min-h-11 rounded-lg px-3 py-2.5 text-sm whitespace-nowrap',
+                // Same vocabulary as the header's NavLink: whatever says "you
+                // are here" up there has to say it the same way down here.
+                'font-heading tracking-brand block min-h-11 rounded-full px-3.5 py-2.5 text-sm whitespace-nowrap',
                 isActive(item.href)
-                  ? 'bg-stone-100 font-medium text-stone-900'
+                  ? 'bg-brand-accent-soft ring-brand-accent text-brand font-medium ring-1 ring-inset'
                   : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900',
               )}
             >

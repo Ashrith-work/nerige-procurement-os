@@ -4,10 +4,59 @@
  * White ground, generous whitespace, the photograph dominant (spec §7).
  * Two weights only, 400 and 500 — nothing on these screens is loud enough to
  * need a third.
+ *
+ * The brand values below are lifted from nerigestory.com, with the source for
+ * every one recorded in docs/BRAND.md. Nothing in src/ should carry a brand hex
+ * literal: if a colour means "Nerige Story", it is a token here.
+ *
+ * This is an operations tool, not the storefront. The brand arrives through
+ * accent, type and detail — the ground stays white, the tables stay plain, and
+ * the only loud thing on any screen is still the photograph of the saree.
  */
 @theme {
+  /*
+   * The platform stack is now explicitly the *data* face: tables, numerals,
+   * SKUs. It is no longer the default for prose — see `body` below.
+   */
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  /* The storefront's own two faces. src/lib/fonts.ts loads them. */
+  --font-heading: var(--font-montserrat), var(--font-sans);
+  --font-body: var(--font-nunito-sans), var(--font-sans);
+
+  /*
+   * Colour.
+   *
+   * --color-brand is the storefront's `--accent` / `--button-background` in its
+   * default scheme: rgb(28 28 28). It is near-black on purpose — Nerige Story
+   * has no saturated brand colour, it has an ink and a blush.
+   *
+   * --color-brand-accent is the coral of the two floral sprigs in the logo,
+   * sampled from the master PNG. At 1.88:1 on white it can never carry text.
+   * It is a fill, a hairline and a mark, and nothing else.
+   */
+  --color-brand: #1c1c1c;
+  --color-brand-hover: #3e3e3e;
+  --color-brand-on: #ffffff;
+  --color-brand-muted: #5c5c5c;
+  --color-brand-accent: #f9aa8f;
+  --color-brand-accent-soft: #ffefeb;
+  --color-brand-line: #dddddd;
+
+  /*
+   * Type scale, taken from the storefront and pulled to the low end of its own
+   * clamps. The site's h1 runs 22px→32px; a 32px page title on a 1024px tablet
+   * costs a row of the queue, so we take its 22px floor and keep the hierarchy
+   * rather than the headline size.
+   */
+  --text-page-title: 1.375rem; /* site --text-h1 floor */
+  --text-page-title--line-height: 1.5; /* site .h1 line-height */
+  --text-section-title: 1.125rem; /* site --text-h3 floor */
+  --text-section-title--line-height: 1.5;
+
+  /* The storefront sets --heading-letter-spacing: 0.05em. */
+  --tracking-brand: 0.05em;
 }
 
 html {
@@ -23,9 +72,12 @@ html {
  * keyboard had no way to see where they were. `:where()` is zero-specificity on
  * purpose: any control that already draws its own ring keeps it, and this only
  * fills the gap.
+ *
+ * The ring is brand ink, not the brand coral: a focus indicator has to clear
+ * 3:1 against what is behind it, and the coral manages 1.88:1 on white.
  */
 :where(a, button, summary, [role='button'], [tabindex]):focus-visible {
-  outline: 2px solid var(--color-stone-900);
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
   border-radius: 0.375rem;
 }
@@ -48,9 +100,44 @@ html {
 
 body {
   background: #fff;
-  color: var(--color-stone-900);
-  font-family: var(--font-sans);
+  color: var(--color-brand);
+  font-family: var(--font-body);
   font-weight: 400;
+}
+
+/*
+ * Headings in the storefront's own face, at its own weight and tracking
+ * (Montserrat 500, 0.05em). Element selectors, so every heading already written
+ * picks this up without fifty files being edited, and so a Tailwind size or
+ * weight utility on any individual heading still wins.
+ */
+:where(h1, h2, h3, h4) {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  letter-spacing: var(--tracking-brand);
+}
+
+/*
+ * ...and not one step further. A dense column of figures read at arm's length
+ * across a warehouse is scanned, not read: it keeps the platform face and
+ * tabular figures, which is what the numeric cells already ask for
+ * individually. `:where()` keeps this at zero specificity so any cell that
+ * genuinely wants the brand face can still say so.
+ */
+:where(table) {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The storefront has no separate link colour — links are body ink with a 1px
+ * rule under them. That is both its convention and the accessible one, since
+ * nothing is then distinguished by colour alone. This only matches its weight
+ * and offset; the colour stays inherited.
+ */
+:where(a).underline {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
 }
 
 /*

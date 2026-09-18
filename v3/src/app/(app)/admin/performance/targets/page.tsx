@@ -5,7 +5,7 @@ import { Card, PageHeader } from '@/components/ui/primitives'
 import { loadTasks } from '@/lib/performance/summary'
 import { AddTaskForm, TaskRow } from './targets-form'
 
-export const metadata = { title: 'Staff targets · Nerige' }
+export const metadata = { title: 'Staff targets' }
 
 /**
  * The per-day targets the review measures against.

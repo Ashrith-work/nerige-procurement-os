@@ -14,7 +14,7 @@ import { IntakeStatusBadge } from '@/app/(app)/intake/_components/intake-status-
 import { TransitionControls } from '@/app/(app)/intake/_components/transition-controls'
 import { loadFlowSaree } from '../_lib/saree'
 
-export const metadata = { title: 'Photograph it · Nerige' }
+export const metadata = { title: 'Photograph it' }
 
 /**
  * Step 3: the camera.

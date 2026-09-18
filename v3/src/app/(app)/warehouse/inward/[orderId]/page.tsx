@@ -15,7 +15,7 @@ import {
 } from '@/lib/inwarding/view'
 import { ReceiptForm, LineHeading } from './receipt-form'
 
-export const metadata = { title: 'Receive order · Nerige' }
+export const metadata = { title: 'Receive order' }
 
 /**
  * One order at the receiving bench.

@@ -6,7 +6,7 @@ import { getDictionary, interpolate, formatCount, type Dictionary, type Locale }
 import { PageHeader } from '@/components/ui/primitives'
 import { TutorialCard, type TutorialVideo } from '@/components/tutorial-card'
 
-export const metadata = { title: 'My orders · Nerige' }
+export const metadata = { title: 'My orders' }
 
 interface OrderRow {
   id: string

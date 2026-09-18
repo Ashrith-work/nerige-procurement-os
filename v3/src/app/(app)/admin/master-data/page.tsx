@@ -7,7 +7,7 @@ import { SKU_VOCAB_TYPES, VOCAB_LABELS, VOCAB_TYPES, type VocabType } from '../.
 import { CodeRow, type CodeRowData } from './code-row'
 import { AddValueForm } from './add-value-form'
 
-export const metadata = { title: 'Saree words · Nerige' }
+export const metadata = { title: 'Saree words' }
 
 interface MasterRow {
   type: VocabType

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader, Card, LinkButton, StatusBadge } from '@/components/ui/primitives'
 import { ImageEditor, type EditableProduct } from '../image-editor'
 
-export const metadata = { title: 'One design · Nerige' }
+export const metadata = { title: 'One design' }
 
 /**
  * One design, as Nerige holds it.

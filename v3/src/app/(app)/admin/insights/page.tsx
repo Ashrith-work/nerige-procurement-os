@@ -7,7 +7,7 @@ import { InsightsFilters, type FacetRow } from './insights-filters'
 import { UnitsChart } from './units-chart'
 import { BreakdownTable } from './breakdown-table'
 
-export const metadata = { title: 'Insights · Nerige' }
+export const metadata = { title: 'Insights' }
 
 /**
  * Admin only, and never visible to a weaver.

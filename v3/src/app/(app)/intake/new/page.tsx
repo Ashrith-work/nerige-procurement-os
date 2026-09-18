@@ -9,7 +9,7 @@ import { canEditDraft } from '@/lib/intake/transitions'
 import { loadIntakeContext, loadVocabulary, newIntakeKey, offered, VOCAB_TYPES } from '../_lib/data'
 import { IntakeForm, type DraftDefaults, type FormVocabulary } from './intake-form'
 
-export const metadata = { title: 'New saree · Nerige' }
+export const metadata = { title: 'New saree' }
 
 /**
  * A new saree, from the warehouse table.

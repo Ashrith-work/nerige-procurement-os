@@ -10,7 +10,7 @@ import type { Tier } from '@/lib/reorder/sort'
 import { PrintButton } from '@/components/print-button'
 import { Input, Select, Button, PageHeader, EmptyState } from '@/components/ui/primitives'
 
-export const metadata = { title: 'My designs · Nerige' }
+export const metadata = { title: 'My designs' }
 
 /** Large cards, so a page is a page and not a scroll of a thousand. */
 const PAGE_SIZE = 48

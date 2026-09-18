@@ -10,7 +10,7 @@ import { loadRoster, loadTodaySheetStatus } from '@/lib/performance/summary'
 import { loadAdminQueue, loadOrderDecisions } from '@/lib/dashboards/today'
 import { isStale, loadSyncAges } from '@/lib/dashboards/freshness'
 
-export const metadata = { title: 'Today · Nerige' }
+export const metadata = { title: 'Today' }
 
 /**
  * Today: what is waiting on this person, and nothing else.

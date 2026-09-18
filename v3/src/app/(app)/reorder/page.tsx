@@ -10,7 +10,7 @@ import { FilterBar, type VendorOption, type CollectionOption } from './filter-ba
 import { DesignTile, type Design } from './design-tile'
 import { SelectionFooter } from './selection-footer'
 
-export const metadata = { title: 'Reorder · Nerige' }
+export const metadata = { title: 'Reorder' }
 
 /** Tiles are small; a page of them is still a page. */
 const PAGE_SIZE = 120

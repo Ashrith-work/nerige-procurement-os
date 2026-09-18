@@ -2,7 +2,7 @@ import { requireProcurement } from '@/lib/auth/session'
 import { PageHeader } from '@/components/ui/primitives'
 import { NewVendorForm } from './new-vendor-form'
 
-export const metadata = { title: 'Add a weaver · Nerige' }
+export const metadata = { title: 'Add a weaver' }
 
 export default async function NewVendorPage() {
   await requireProcurement()

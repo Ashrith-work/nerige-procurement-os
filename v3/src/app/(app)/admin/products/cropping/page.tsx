@@ -4,7 +4,7 @@ import { PageHeader, Select, Button, EmptyState, LinkButton } from '@/components
 import { resolveProductImage, type CropRect } from '@/lib/products/image'
 import { CropQueue, type QueueItem } from './crop-queue'
 
-export const metadata = { title: 'Cropping · Nerige' }
+export const metadata = { title: 'Cropping' }
 
 /**
  * The queue of sarees a weaver will see that nobody has framed by hand.

@@ -6,7 +6,7 @@ import { Alert, Button, EmptyState, PageHeader, StatusBadge } from '@/components
 import { FlowStepper } from '@/components/flow/stepper'
 import { withFlow } from '@/components/flow/flows'
 
-export const metadata = { title: 'Order sent · Nerige' }
+export const metadata = { title: 'Order sent' }
 
 interface SentOrder {
   id: string

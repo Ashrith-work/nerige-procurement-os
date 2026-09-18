@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/primitives'
 import { OrderSections } from '@/components/order-sections'
 import { AcceptForm, DispatchForm } from './order-forms'
 
-export const metadata = { title: 'Order · Nerige' }
+export const metadata = { title: 'Order' }
 
 /**
  * The vendor order screen.

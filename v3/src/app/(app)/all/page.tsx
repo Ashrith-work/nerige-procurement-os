@@ -4,7 +4,7 @@ import { getWorkspaceContext } from '@/lib/workspaces.server'
 import { availableSections } from '@/lib/workspaces'
 import { PageHeader } from '@/components/ui/primitives'
 
-export const metadata = { title: 'All screens · Nerige' }
+export const metadata = { title: 'All screens' }
 
 /**
  * Every screen this account can open, on one page.
@@ -29,7 +29,7 @@ const GROUPS: { title: string; keys: readonly string[] }[] = [
   { title: 'Where the work stands', keys: ['today', 'work', 'numbers'] },
   { title: 'Ordering sarees', keys: ['order-flow', 'reorder', 'orders', 'weavers'] },
   { title: 'New sarees', keys: ['new-saree', 'intake', 'shooting', 'review', 'attributes', 'cropping', 'identify'] },
-  { title: 'The warehouse', keys: ['receive-flow', 'inward', 'staff', 'performance'] },
+  { title: 'The warehouse', keys: ['day-sheet', 'receive-flow', 'inward', 'staff', 'performance'] },
   { title: 'Looking things up', keys: ['lookup', 'products', 'insights'] },
   { title: 'Running it', keys: ['signups', 'settings', 'profile'] },
 ]

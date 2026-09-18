@@ -19,7 +19,7 @@ import {
 import { IntakeStatusBadge } from '../intake/_components/intake-status-badge'
 import { TransitionControls } from '../intake/_components/transition-controls'
 
-export const metadata = { title: 'Approve sarees · Nerige' }
+export const metadata = { title: 'Approve sarees' }
 
 const DECIDED_LIMIT = 25
 

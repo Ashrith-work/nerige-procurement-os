@@ -23,7 +23,7 @@ import { formatDays, formatPercent } from '@/lib/performance/calc'
 import { daysBetween, formatLongDay } from '@/lib/performance/period'
 import { PeriodBar } from './period-bar'
 
-export const metadata = { title: 'Numbers · Nerige' }
+export const metadata = { title: 'Numbers' }
 
 /**
  * Numbers: every analysis, in one place, opened on purpose.

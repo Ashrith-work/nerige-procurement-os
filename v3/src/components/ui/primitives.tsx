@@ -20,13 +20,18 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium',
-        'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        // Pill, because nerigestory.com sets --button-border-radius: 1.875rem
+        // on a 44px control, which is a full round end. It is the cheapest
+        // brand signal in the interface: it costs no contrast, no density and
+        // no reading speed. The 0.18em the storefront tracks its button labels
+        // at is cut to 0.06em — see docs/BRAND.md.
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium',
+        'tracking-[0.06em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50',
         variant === 'primary' &&
-          'bg-stone-900 text-white hover:bg-stone-800 focus-visible:ring-stone-900',
+          'bg-brand text-brand-on hover:bg-brand-hover focus-visible:ring-brand',
         variant === 'secondary' &&
-          'border border-stone-300 bg-white text-stone-900 hover:bg-stone-50 focus-visible:ring-stone-400',
+          'border border-stone-300 bg-white text-brand hover:bg-stone-50 focus-visible:ring-stone-400',
         variant === 'ghost' && 'text-stone-700 hover:bg-stone-100',
         variant === 'danger' && 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600',
         className,
@@ -166,7 +171,14 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-lg font-medium tracking-tight">{title}</h1>
+        {/*
+          * text-page-title is the storefront's own h1 at the *floor* of its
+          * clamp — 1.375rem/1.5 — not its 2rem ceiling. The hierarchy is the
+          * thing worth importing; a 32px title on a 1024px tablet costs a row
+          * of whatever queue is underneath it. tracking-tight is gone so the
+          * heading picks up the site's 0.05em from globals.css.
+          */}
+        <h1 className="text-page-title font-medium">{title}</h1>
         {subtitle && <p className="text-sm text-stone-500">{subtitle}</p>}
       </div>
       {action}
@@ -234,11 +246,12 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium',
-        'transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
-        variant === 'primary' && 'bg-stone-900 text-white hover:bg-stone-800 focus-visible:ring-stone-900',
+        // Same shape as Button, because it is the same control to a user.
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium',
+        'tracking-[0.06em] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+        variant === 'primary' && 'bg-brand text-brand-on hover:bg-brand-hover focus-visible:ring-brand',
         variant === 'secondary' &&
-          'border border-stone-300 bg-white text-stone-900 hover:bg-stone-50 focus-visible:ring-stone-400',
+          'border border-stone-300 bg-white text-brand hover:bg-stone-50 focus-visible:ring-stone-400',
         variant === 'ghost' && 'text-stone-700 hover:bg-stone-100 focus-visible:ring-stone-400',
         className,
       )}

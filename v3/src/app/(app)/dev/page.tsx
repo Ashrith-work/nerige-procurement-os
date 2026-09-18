@@ -5,7 +5,7 @@ import { ROLE_LABEL, VIEWABLE_ROLES } from '@/lib/auth/view-as'
 import { Card, PageHeader, StatusBadge } from '@/components/ui/primitives'
 import { startViewAs } from './actions'
 
-export const metadata = { title: 'Developer · Nerige' }
+export const metadata = { title: 'Developer' }
 
 /**
  * The developer's home: every role's screens one press away, and the handful

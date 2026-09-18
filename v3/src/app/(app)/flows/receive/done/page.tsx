@@ -12,7 +12,7 @@ import {
   type RawInwardOrder,
 } from '@/lib/inwarding/view'
 
-export const metadata = { title: 'Parcel recorded · Nerige' }
+export const metadata = { title: 'Parcel recorded' }
 
 /**
  * Step 3: what the bench just recorded, and what the weaver still owes.
